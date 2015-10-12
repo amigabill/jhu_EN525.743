@@ -1,12 +1,19 @@
 
-// Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
+// uncomment these DEBUG items to enable debug serial prints
+//#define DEBUG_ZB_RX
+//#define DEBUG_ZB_TX
+
 
 #include "Arduino.h"
+
 //#include "../byteswap.h"
 //extern "C" {
 //  #include "byteswap.h"
 //}
 // following LGPL 2.1+ byteswap macros slightly modified from http://repo-genesis3.cbi.utsa.edu/crossref/ns-sli/usr/include/bits/byteswap.h.html
+// These byteswaps are needed, as 16bit ints and 32bit longs in the Zigbee message byte order are byteswapped 
+// compared to the Arduino's requirements to conveniently use them as 16bit int or 32bit long values, 
+// rather than doing more work to deal with everythign as individual bytes
 #define BYTESWAP16(x) \
        (unsigned int)((((x) >> 8) & 0xff) | (((x) & 0xff) << 8))
 
@@ -14,10 +21,20 @@
        (unsigned long)((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >>  8) |               \
                        (((x) & 0x0000ff00) <<  8) | (((x) & 0x000000ff) << 24))
 
+#define  NO 0x00
+#define YES 0x01
 
-// uncomment these DEBUG items to enable debug serial prints
-//#define DEBUG_ZB_RX
-//#define DEBUG_ZB_TX
+
+// The 4 types of SmartHome message to be sent over Zigbee
+// together these four messages ame up one SmartHome protocol "conversation"
+#define SH_MSG_TYPE_CMD_REQ   0x01 // Request recipient to run a new command
+#define SH_MSG_TYPE_ACK_CREQ  0x02 // ACKnowledge new command received, Request COnfirmation from Sender
+#define SH_MSG_TYPE_CONFIRMED 0x03 // Sender Confirms it did indeed initiate this new command request
+#define SH_MSG_TYPE_COMPLETED 0x04 // Recipient indicates command has been executed and completed
+
+
+// Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
+
 
 
 // Select the Microcontroller type for this node unit
@@ -26,9 +43,36 @@
 #define uCtype      uC_TYPE_UNO
 //#define uCtype    uC_TYPE_DUE
 
-#define NODE_TYPE_TARGET  0x00  // Target, has Triacs, NO LCD
-#define NODE_TYPE_CNTRL   0x01  // Wall "switch" controller, has LCD, uSD
-#define NODE_TYPE_SERVER  0x02  // Linux Server (NOT an Arduino platform)
+#define SH_NODE_TYPE_TARGET  0x00  // Target, has Triacs/PowerTail, NO LCD
+#define SH_NODE_TYPE_CNTRL   0x01  // Wall "switch" controller, has LCD, uSD
+#define SH_NODE_TYPE_SERVER  0x02  // Linux Server (NOT an Arduino platform)
+
+// SmartHome node Commands
+#define SH_CMD_NOP          0x00        // No OPeration, do nothing
+#define SH_CMD_LOAD_ON      0x01        // Turn on the target load at this node
+#define SH_CMD_LOAD_OFF     0x02        // Turn off the target load at this node
+// ...
+
+// SmartHome node Status Values
+#define SH_STATUS_SUCCESS 0x00
+#define SH_STSTUS_FAILED  0x01
+#define SH_STATUS_CONFIRMED 0x02
+#define SH_STATUS_NOT_CONFIRMED 0x03
+
+#define SH_NODE_ID_NUM_BYTES 2
+//#define SH_RESERVED_BYTE 0x00
+#define SH_RESERVED_BYTE 'R'
+
+// Smarthome message payload variables
+byte SH_TargetLoadID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // destination addr
+//byte SH_DestID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // destination node ID
+//byte SH_SourceID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // source node ID
+byte SH_DestID[SH_NODE_ID_NUM_BYTES] = {'d', 'u'}; // destination node ID
+byte SH_SourceID[SH_NODE_ID_NUM_BYTES] = {'d', 'e'}; // source node ID
+byte SH_StatusID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // node addr for Status
+byte SH_command = SH_CMD_NOP;
+byte SH_nodeStatus = 0x00;
+byte SH_msgCRC = 0x00;
 
 // Temporary Node ID method, until they can be read from microSD, EEPROM etc.
 // Eventually, Unos will read from EEPROM and Dues will read from SD.
@@ -150,32 +194,6 @@ byte ZB_frameChkSum = 0; //calculate Zigbee Frame checksum here
 
 
 
-// SmartHome node Commands
-#define SH_CMD_NOP     0x00        // No OPeration, do nothing
-#define SH_CMD_ON      0x01        // Turn on the target load
-#define SH_CMD_OFF     0x02        // Turn off the target load
-// ...
-
-// SmartHome node Status Values
-#define SH_STATUS_SUCCESS 0x00
-#define SH_STSTUS_FAILED  0x01
-#define SH_STATUS_CONFIRMED 0x02
-#define SH_STATUS_NOT_CONFIRMED 0x03
-
-#define SH_NODE_ID_NUM_BYTES 2
-//#define SH_RESERVED_BYTE 0x00
-#define SH_RESERVED_BYTE 'R'
-
-// Smarthome message payload variables
-byte SH_TargetLoadID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // destination addr
-//byte SH_DestID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // destination node ID
-//byte SH_SourceID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // source node ID
-byte SH_DestID[SH_NODE_ID_NUM_BYTES] = {'d', 'u'}; // destination node ID
-byte SH_SourceID[SH_NODE_ID_NUM_BYTES] = {'d', 'e'}; // source node ID
-byte SH_StatusID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // node addr for Status
-byte SH_command = SH_CMD_NOP;
-byte SH_nodeStatus = 0x00;
-byte SH_msgCRC = 0x00;
 
 typedef struct
 {
@@ -238,9 +256,9 @@ typedef struct
     volatile byte ZBfrmChksum;;
 } ZBframeRX, *prtZBframeRX;
 
-ZBframeRX    myZBframeRX;
-prtZBframeRX ptrMyZBframeRX = &myZBframeRX;
-byte *rxBuffer = (byte *)&myZBframeRX; //get a pointer to byte which points to our Zigbee Frame stuct, to treat it as RX buffer for Serial.read
+ZBframeRX    myZBframeRX; //global variable to use
+prtZBframeRX ptrMyZBframeRX = &myZBframeRX; //global pointer to use
+byte *rxBuffer = (byte *)&myZBframeRX; //get a pointer to byte (ie. byte array) which points to our Zigbee Frame stuct, to treat it as RX buffer for Serial.read
 
 #define ZB_IN_FRAME_YES 1
 #define ZB_IN_FRAME_NO  0
@@ -251,15 +269,18 @@ byte ZBoffsetTXbuff = 0; // byte counter, delimiter byte is number 0. Used as of
 byte ZBinFrameRX = ZB_IN_FRAME_NO;
 byte ZBoffsetRXbuff = 0; // byte counter, delimiter byte is number 0. Used as offset into rxBuffer while receiving a frame
 
-//byte xbApiMsg[27] = {ZB_START_DELIM, 0x00, 0x17, 0x00, 0x00, 
-//                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-//                     };
-//xbApiMsg[0] = 0x7e;
+byte newFrameRXed = 0;   // have received a new RX Received frame, waiting for processing
+byte newFrameRXstatus = 0;  // 1 if success (got full frame and ZB chksum matches our calc)
+byte newFrameForTX = 0;  // have a new TX Request frame ready to send out on uart/serial port
+
 
 byte i=0; //for loop counter
 
+// standard pin13 LED on Arduino Uno and Due for testing and debug. NOT compatible with LCS panel installed on Due nodes.
 int ledPin = 13;                 // LED connected to digital pin 13 for debug
 byte ledPinState = 0;
+
+
 
 void setup() {
     // put your setup code here, to run once:
@@ -268,7 +289,9 @@ void setup() {
 
     //initialize Zigbee frame tracking
     ZBinFrameRX = ZB_IN_FRAME_NO;
-
+    newFrameRXed = NO;   
+    newFrameForTX = NO;  
+    
     // Xbee should be preconfigured for API mode, 9600, 8n1, so match that in Arduino serial port
     Serial.begin(9600);
   
@@ -303,11 +326,23 @@ void loop() {
 //  digitalWrite(ledPin, LOW);    // sets the LED off
 //  delay(1000);                  // waits for a second
   
-    //experimentign with receive
-    zbRcvFrame();
-    //don't want endless outputs, so move back to end of frame received function
-//    debugPrintRxBuffer();
-//    debugPrintRxFrame();
+    //experimenting with receive
+    //zbRcvFrame();
+
+    if(newFrameRXed == YES)
+    {
+        processRXframe();
+    }
+    else // NO
+    {
+        //check for a new incoming frame
+        zbRcvFrame();
+    }
+
+    if(newFrameForTX == YES)
+    {
+        
+    }
 
 }
 
@@ -513,10 +548,7 @@ void zbExperimentalXmitAPIframe2(void)
     myZBframeTX.ZBdaddr16     = ZB_16ADDR_BCAST_INT;    // 16bit dest addr
     myZBframeTX.ZBfrmRadius   = ZB_BCAST_RADIUS;
     myZBframeTX.ZBfrmOptions  = ZB_OPTIONS;
-    
-    //myZBframeTX.ZBfrmPayload = (char)"abcdefghijk"; //{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l' };
-    //myZBframeTX.ZBfrmPayload = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l' };
-    //myZBframeTX.ZBfrmPayload = testPayload; //{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l' };
+
     for(i=0; i<ZB_FRM_PAYLOAD_BYTES; i++)
     {
 //        myZBframeTX.ZBfrmPayload[i] = testPayload[i];
@@ -535,10 +567,7 @@ void zbExperimentalXmitAPIframe2(void)
 
 int zbRcvFrame(void)
 {
-    byte ZB_frm_byte = 0; // byte received in uart RX by Serial.read
-    unsigned int ZBfrmReceivedLen= 0;  //debug if got 16bit length fields correct
-    byte * ptrZBfrmReceivedLen = (byte *)&ZBfrmReceivedLen; //pointer to that
-    
+    byte ZB_frm_byte = 0; // byte received in uart RX by Serial.read    
     byte ZBfrmRXchmsumCalc = 0;
     byte ZBchksumFromSender= 0;
         
@@ -546,7 +575,7 @@ int zbRcvFrame(void)
     {
         // Read a byte from uart RX buffer
         ZB_frm_byte = Serial.read(); 
-        flipLEDpin(); // change LED when get a byte   
+        //flipLEDpin(); // change LED when get a byte   
             
         if((ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIM)) 
         {
@@ -561,36 +590,6 @@ int zbRcvFrame(void)
             return(0);
         }
         //else //in a frame
-        else if (ZBoffsetRXbuff == ZB_FRM_OFFSET_LENH)
-        {
-            //ZBfrmReceivedLen = (int)(ZB_frm_byte << 8); //set this as high byte of the 16bit length value
-            //ptrZBfrmReceivedLen[0] = ZB_frm_byte;   
-            ZBfrmReceivedLen = (int)ZB_frm_byte;
-            ZBfrmReceivedLen = (ZBfrmReceivedLen << 8);
-
-            #if DEBUG_ZB_RX
-            Serial.print("<<getting frame length H=");
-            Serial.print(ZB_frm_byte, HEX);
-            Serial.print("storing as ");
-            Serial.print(ZBfrmReceivedLen, HEX);
-            Serial.print(">>");         
-            #endif
-        }
-        else if (ZBoffsetRXbuff == ZB_FRM_OFFSET_LENL)
-        {
-            //ZBfrmReceivedLen += ZB_frm_byte; //set this as high byte of the 16bit length value
-            //Serial.print(ZBfrmReceivedLen, HEX); // debug print integer to serial port monitor            
-            //ptrZBfrmReceivedLen[1] = ZB_frm_byte;
-            ZBfrmReceivedLen += (int)ZB_frm_byte;
-
-            #if DEBUG_ZB_RX
-            Serial.print("<<<<getting frame length L=");
-            Serial.print(ZB_frm_byte, HEX);
-            Serial.print("storing as ");
-            Serial.print(ZBfrmReceivedLen, HEX);
-            Serial.print(">>>>");            
-            #endif
-        }
         else if (ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_CHKSUM)
         {
             //put received byte into rx buffer (aka received Zigbee frame structure)
@@ -600,31 +599,17 @@ int zbRcvFrame(void)
             //final checksum is ff - the sum of bytes 3 to N-1 (excludes the received checksum value)
             ZBfrmRXchmsumCalc = 0xff - ZBfrmRXchmsumCalc;
 
-            #if DEBUG_ZB_RX
-            //Serial.print(ZB_frm_byte, HEX); // debug print integer to serial port monitor            
-            ////Serial.print(ZBfrmRXchmsumCalc, HEX); // debug print integer to serial port monitor            
-            Serial.print("<Finished a frame, LEN=");
-            Serial.print(ZBfrmReceivedLen, HEX);
-            Serial.print("; chksumRcvd=");
-            Serial.print(ZBchksumFromSender, HEX);
-            Serial.print("; chksumCalced=");
-            Serial.print(ZBfrmRXchmsumCalc, HEX);
-            Serial.println(">");
-            #endif
-
             // pull out our SmartHome data items into global vars
             extractRXpayload();
-            //moved debug output calls to main loop function - unmoved as it endlessly loops there
-//            debugPrintRxBuffer();
-//            debugPrintRxFrame();
-            debugPrintRXpayload();
 
-
+            // let rest of program know that a new RX frame is waiting to be processed
+            newFrameRXed = YES;
+            
             // end of frame, next byte received is NOT part of this same frame
             ZBinFrameRX = ZB_IN_FRAME_NO;
-            flipLEDpin();
             return(0);
         }
+
 
         if(ZBinFrameRX == ZB_IN_FRAME_YES)
         {
@@ -634,21 +619,8 @@ int zbRcvFrame(void)
             //put received byte into rx buffer (aka received Zigbee frame structure)
             rxBuffer[ZBoffsetRXbuff] = ZB_frm_byte;
             
-            #if DEBUG_ZB_RX
-            Serial.print("<|ZBoffsetRXbuff=");
-            Serial.print(ZBoffsetRXbuff, HEX);
-            Serial.print("|>");
-            #endif
             if((ZBoffsetRXbuff >= ZB_FRM_OFFSET_FTYPE) && (ZBoffsetRXbuff < ZB_FRM_OFFSET_RX_CHKSUM))
             {
-                #if DEBUG_ZB_RX
-                Serial.println("");
-                Serial.print("<[Adding offset ");
-                Serial.print(ZBoffsetRXbuff);
-                Serial.print(" byte value 0x");
-                Serial.print(ZB_frm_byte, HEX);
-                Serial.println("to running chksum]>");
-                #endif
                 // add to the checksum for this frame
                 ZBfrmRXchmsumCalc += ZB_frm_byte;             
             }
@@ -656,9 +628,7 @@ int zbRcvFrame(void)
             //increment offset for next byte received in this frame (AFTER checking if should add to checksum)
             ZBoffsetRXbuff++ ;
         }
-
-    }
-    
+    }    
 }
 
 
@@ -680,10 +650,62 @@ void extractRXpayload(void)
 }
 
 
+// parse the received ZB frame payload to determine if message was for this node or not
+// and if it was, determine what to do as result
+void processRXframe(void)
+{
+    //debugPrintRxBuffer();
+    //flipLEDpin();
+
+
+    //check if RXdestID is this node cotnroller or one of its target loads
+    //go through dest IDs stored in SD/eeprom (NV) and compare with RXdestID in message
+
+
+    // if RXdestID is in this node, figure out if node control or which target
+
+        // run the received SH command
+        SHrunCommand();
+    
+    // We processed our new RX frame, so no longer have a new one
+    // Last thing to do when processing an RX frame, so we're ready to receive another new frame
+    newFrameRXed = NO;
+}
+
+
+void SHrunCommand(void)
+{
+        switch ( rxCommand ) 
+        {
+            case SH_CMD_LOAD_ON:
+                // Code
+                digitalWrite(ledPin, HIGH);   // sets the LED on
+                break;
+
+            case SH_CMD_LOAD_OFF:
+                // Code
+                digitalWrite(ledPin, LOW);   // sets the LED off
+               break;
+
+            case SH_CMD_NOP:  // No OPeration, DO NOTHING (same as default)
+            default:
+                // Unknown command, do nothing
+               break;
+        }
+
+        Serial.println("");
+        Serial.print("Ran SH cmd code 0x");
+        Serial.print(rxCommand, HEX);
+        Serial.println("");
+
+        // Send notice message to Server for logging what SmartHome command we received to run
+        
+}
+
 void debugPrintRxBuffer(void)
 {
     Serial.println("");
-    Serial.print("Received a Zigbee buffer containing -> ");
+    Serial.print("Received a Zigbee buffer containing payload data -> ");
     for(i=0; i<=ZB_FRM_OFFSET_RX_CHKSUM; i++)
     {
         Serial.print(rxBuffer[i], HEX);
@@ -693,99 +715,6 @@ void debugPrintRxBuffer(void)
 }
 
 
-void debugPrintRxFrame(void)
-{
-    unsigned int rxZBfrmLen = 0;
-    unsigned long rxZBsaddr64High = 0;
-    unsigned long rxZBsaddr64Low = 0;
-    unsigned int rxZBsaddr16 = 0;
-
-    rxZBfrmLen      = BYTESWAP16(myZBframeRX.ZBfrmLength);
-    rxZBsaddr64High = BYTESWAP32(myZBframeRX.ZBsaddr64High);
-    rxZBsaddr64Low   = BYTESWAP32(myZBframeRX.ZBsaddr64Low);
-    rxZBsaddr16     = BYTESWAP16(myZBframeRX.ZBsaddr16);
-    
-    Serial.println("");
-    Serial.println("Received a Zigbee buffer containing -> ");
-
-        Serial.print(myZBframeRX.ZBfrmDelimiter, HEX);
-        Serial.print(" ");
-        Serial.print(rxZBfrmLen, HEX);
-        Serial.print(" ");
-        Serial.print(myZBframeRX.ZBfrmType, HEX);
-        Serial.print(" ");
-        Serial.print(rxZBsaddr64High, HEX);
-        Serial.print(" ");
-        Serial.print(rxZBsaddr64Low, HEX);
-        Serial.print(" ");
-        Serial.print(rxZBsaddr16, HEX);
-        Serial.print(" ");
-        Serial.print(myZBframeRX.ZBfrmOptions, HEX);
-        Serial.print(" <pl>");
-
-        for(i=0; i<ZB_FRM_PAYLOAD_BYTES; i++)
-        {
-            Serial.print(" ");
-//            Serial.print(myZBframeRX.ZBfrmPayload[i], HEX);
-        }
-        Serial.print(" </pl> ");
-
-        Serial.print(myZBframeRX.ZBfrmChksum, HEX);
-    Serial.println("");
-}
-
-void debugPrintRXpayload(void)
-{
-    Serial.print("rx Payload is ->");
-
-    Serial.print("rxDestID=");
-    Serial.print(rxDestID, HEX);
-    Serial.print(" ");
-    Serial.print(rxDestID);
-    Serial.print(" ");
-
-    Serial.print("rxSrcID=");
-    Serial.print(rxSrcID, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxMsgType=");
-    Serial.print(rxMsgType, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxCommand=");
-    Serial.print(rxCommand, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxStatusH(8bit)=");
-    Serial.print(rxStatusH, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxStatusL(8bit)=");
-    Serial.print(rxStatusL, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxStatusID(16bit)=");
-    Serial.print(rxStatusID, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxStatusVal=");
-    Serial.print(rxStatusVal, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxPayldCRC=");
-    Serial.print(rxPayldCRC, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxReserved1=");
-    Serial.print(rxReserved1, HEX);
-    Serial.print(" ");
-
-    Serial.print("rxReserved2=");
-    Serial.print(rxReserved2, HEX);
-
-    Serial.println("");
-
-}
 
 // for debug
 // change value to LED on pin 13, to turn it on or turn it off
@@ -799,7 +728,7 @@ void flipLEDpin(void)
     else
     {
         ledPinState = 0;
-        digitalWrite(ledPin, LOW);   // sets the LED on
+        digitalWrite(ledPin, LOW);   // sets the LED off
     }
     
 }
