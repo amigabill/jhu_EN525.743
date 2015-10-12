@@ -25,7 +25,7 @@
 #define YES 0x01
 
 
-// The 4 types of SmartHome message to be sent over Zigbee
+// The 4 types of SmartHome message to be sent over Zigbee as payload.SHmsgType
 // together these four messages ame up one SmartHome protocol "conversation"
 #define SH_MSG_TYPE_CMD_REQ   0x01 // Request recipient to run a new command
 #define SH_MSG_TYPE_ACK_CREQ  0x02 // ACKnowledge new command received, Request COnfirmation from Sender
@@ -87,7 +87,7 @@ byte SH_msgCRC = 0x00;
 //byte zb_id_L[] = {0x40, 0xe6, 0xec, 0x86};        // 0x40e6ec86
 
 // Zigbee API frame stuff
-#define ZB_START_DELIM               (byte)0x7e // indicates start of a Zigbee frame
+#define ZB_START_DELIMITER               (byte)0x7e // indicates start of a Zigbee frame
 
 #define ZB_FRAME_TYPE_ATCMD_IMD      (byte)0x08 // Transmit Request
 #define ZB_FRAME_TYPE_ATCMD_QUE      (byte)0x09 // Transmit Request
@@ -140,12 +140,18 @@ byte ZB_frameChkSum = 0; //calculate Zigbee Frame checksum here
 #define ZB_TX_FRM_OPTIONS_BYTES  0x01
 //#define ZB_TX_FRM_HEADER_BYTES  17
 #define ZB_TX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
+#define ZB_RX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
 
 #define ZB_FRM_PAYLOAD_BYTES    12  // fixed number in this design
 #define ZB_TX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
 #define ZB_TX_FRM_CHKSUM_BYTES  1
 #define ZB_TX_FRM_BYTES   (ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES)
+#define ZB_TX_FRM_BYTES_INT     (int)ZB_TX_FRM_BYTES
 #define ZB_TX_FRM_BYTES_SH_MAX   (ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES) // max bytes SmartHome nodes should expect to receive in a ZB frame
+
+#define ZB_RX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
+#define ZB_RX_FRM_BYTES   (ZB_RX_FRM_HEADER_BYTES + ZB_RX_FRM_PAYLOAD_BYTES + ZB_RX_FRM_CHKSUM_BYTES)
+#define ZB_RX_FRM_BYTES_INT     (int)ZB_RX_FRM_BYTES
 
 #define ZB_TX_FRM_LEN  (int)(ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES + ZB_FRM_PAYLOAD_BYTES)
 
@@ -208,6 +214,8 @@ typedef struct
     volatile byte         SHreserved1;  // 8bit Smarthome message type
     volatile byte         SHreserved2;  // 8bit Smarthome message type
 } SHpayload, *prtSHpayload;
+
+//change these global vars to another instance of SHpayload struct for TX and again for TX
 unsigned int rxDestID = 0;
 unsigned int rxSrcID = 0;
 byte         rxMsgType = 0;
@@ -306,8 +314,9 @@ void setup() {
 
     // say hi to all - broadcast
     // 7E 00 10 10 01 00 00 00 00 00 00 FF FF FF FE 00 00 68 69 22
+
   
-    //zbXmitAPIframe();
+    zbXmitAPIframe();
     //zbExperimentalXmitAPIframe();
 //    zbExperimentalXmitAPIframe2();
 }
@@ -327,7 +336,7 @@ void loop() {
 //  delay(1000);                  // waits for a second
   
     //experimenting with receive
-    //zbRcvFrame();
+    //zbRcvAPIframe();
 
     if(newFrameRXed == YES)
     {
@@ -336,7 +345,7 @@ void loop() {
     else // NO
     {
         //check for a new incoming frame
-        zbRcvFrame();
+        zbRcvAPIframe();
     }
 
     if(newFrameForTX == YES)
@@ -385,190 +394,113 @@ void doConversation(void)
 }
 
 
-// Transmit a Zigbee API Frame
+// Transmit a Zigbee API TX Request Frame
 // Each Zigbee message frame has a 12byte payload, so length=23=0x17 bytes, total frame=27bytes
 void zbXmitAPIframe(void)
 {
-    //init checksum for new Zigbee Frame
-    ZB_frameChkSum = 0;
-    
-    Serial.write(ZB_START_DELIM); // Start delimiter
-    //  Serial.flush();
-    Serial.write(0x00); // Hbyte API frame length 
-    Serial.write(0x17); // Lbyte API frame length
+    myZBframeTX.ZBfrmDelimiter = ZB_START_DELIMITER;
+    Serial.print(" <<ZBfrmDelimiter=");
+    Serial.print(txBuffer[i], HEX);
+    Serial.print(">> ");
+    myZBframeTX.ZBfrmLength    = BYTESWAP16(ZB_TX_FRM_LEN);
+    myZBframeTX.ZBfrmType      = ZB_FRAME_TYPE_TX_REQ;
+    myZBframeTX.ZBfrmID        = 0x01;
+    myZBframeTX.ZBdaddr64High  = BYTESWAP32(ZB_64ADDR_BCAST_HIGH);
+    myZBframeTX.ZBdaddr64Low   = BYTESWAP32(ZB_64ADDR_BCAST_LOW);
+    myZBframeTX.ZBdaddr16      = BYTESWAP16(ZB_16ADDR_BCAST_INT);
+    myZBframeTX.ZBfrmRadius    = ZB_BCAST_RADIUS;
+    myZBframeTX.ZBfrmOptions   = ZB_OPTIONS;
 
-    // Start computing Zigbee Frame checksum here:
-    Serial.write(ZB_FRAME_TYPE_TX_REQ); // Frame Type Transmit Request 0x10
-    ZB_frameChkSum += ZB_FRAME_TYPE_TX_REQ;
-    Serial.write(ZBframeIDnumTX); // Frame ID number
-    ZB_frameChkSum += ZBframeIDnumTX;
-    //  Serial.flush();
+    // populate the TX frame payload data (aka RF Data)
+    populateTXpayload();
 
-    // loop to send all bytes that make up the 64bit Zigbee destination address
-    for(i=0; i<ZB_64ADDR_NUM_BYTES; i++)
+    // initialize the Zigbee API frame checksum before calculating it
+    myZBframeTX.ZBfrmChksum = 0x00;    
+    zbFrmCalcTxChksum();
+
+    debugPrintTxBufferUno();
+    //debugPrintTxBufferDue();
+
+    for(ZBoffsetTXbuff=0; ZBoffsetTXbuff<ZB_TX_FRM_BYTES; ZBoffsetTXbuff++)
     {
-        Serial.write(ZB_64addrDest[i]);
-        ZB_frameChkSum += ZB_64addrDest[i];
+        while( Serial.availableForWrite() == 0 )
+        {
+            //wait for room in serial buffer, do nothing while waiting
+        }
+        Serial.write(txBuffer[ZBoffsetTXbuff]); //Uno
     }
-
-    // loop to send all bytes that make up the 16bit Zigbee destination address
-    for(i=0; i<ZB_16ADDR_NUM_BYTES; i++)
-    {
-        Serial.write(ZB_16addrDest[i]);
-        ZB_frameChkSum += ZB_16addrDest[i];
-    }
-
-    Serial.write(ZB_BCAST_RADIUS); // Zigbee broadcast Radius
-    ZB_frameChkSum += ZB_BCAST_RADIUS;
-    Serial.write(ZB_OPTIONS); // Zigbee Frame Options
-    ZB_frameChkSum += ZB_OPTIONS;
-
-    // Message payload, book calls this "RF data"
-        // 2byte target load ID
-        // loop to send all bytes that make up the 16bit Zigbee destination address
-        for(i=0; i<SH_NODE_ID_NUM_BYTES; i++)
-        {
-            Serial.write(SH_DestID[i]);
-            ZB_frameChkSum += SH_DestID[i];
-        }
-
-        // 2bytes sender node ID
-        for(i=0; i<SH_NODE_ID_NUM_BYTES; i++)
-        {
-            Serial.write(SH_SourceID[i]);
-            ZB_frameChkSum += SH_SourceID[i];
-        }
-
-        // 1byte command
-        Serial.write(SH_command); // SmartHome node command
-        ZB_frameChkSum += SH_command;
-
-        // 2bytes node ID for status
-        for(i=0; i<SH_NODE_ID_NUM_BYTES; i++)
-        {
-            Serial.write(SH_StatusID[i]);
-            ZB_frameChkSum += SH_StatusID[i];
-        }
-        // 1byte status value
-        Serial.write(SH_nodeStatus); // SmartHome node command
-        ZB_frameChkSum += SH_nodeStatus;
-
-        // 1byte crc
-        Serial.write(SH_msgCRC); // SmartHome message CRC
-        ZB_frameChkSum += SH_msgCRC;
-
-        // 2bytes reserved for future use, use 0x00, 0x00 for now
-        Serial.write(SH_RESERVED_BYTE); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += SH_RESERVED_BYTE;
-        Serial.write(SH_RESERVED_BYTE); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += SH_RESERVED_BYTE;
-
-    // STOP computing Zigbee API Frame checksum here.
-
-    Serial.write(ZB_frameChkSum); // Zigbee API Frame Checksum value
-
 }
 
-void zbExperimentalXmitAPIframe(void)
+void populateTXpayload(void)
 {
-    //init checksum for new Zigbee Frame
-    ZB_frameChkSum = 0;
-
-    ZBframeIDnumTX = 1;
-    //ZB_64addrDest = ZB_64ADDR_BCAST;
-    //(byte)ZB_64addrDest[ZB_64ADDR_NUM_BYTES] = ZB_64ADDR_BCAST;
-    
-    Serial.write(ZB_START_DELIM); // Start delimiter
-    //  Serial.flush();
-    Serial.write(0x00); // Hbyte API frame length 
-    Serial.write(0x12); // Lbyte API frame length
-
-    // Start computing Zigbee Frame checksum here:
-    Serial.write(ZB_FRAME_TYPE_TX_REQ); // Frame Type Transmit Request 0x10
-    ZB_frameChkSum += ZB_FRAME_TYPE_TX_REQ;
-    Serial.write(ZBframeIDnumTX); // Frame ID number
-    ZB_frameChkSum += ZBframeIDnumTX;
-    //  Serial.flush();
-
-    // loop to send all bytes that make up the 64bit Zigbee destination address
-    for(i=0; i<ZB_64ADDR_NUM_BYTES; i++)
-    {
-        Serial.write(ZB_64addrDest[i]);
-        ZB_frameChkSum += ZB_64addrDest[i];
-    }
-
-    // loop to send all bytes that make up the 16bit Zigbee destination address
-    for(i=0; i<ZB_16ADDR_NUM_BYTES; i++)
-    {
-        Serial.write(ZB_16addrDest[i]);
-        ZB_frameChkSum += ZB_16addrDest[i];
-    }
-
-    Serial.write(ZB_BCAST_RADIUS); // Zigbee broadcast Radius
-    ZB_frameChkSum += ZB_BCAST_RADIUS;
-    Serial.write(ZB_OPTIONS); // Zigbee Frame Options
-    ZB_frameChkSum += ZB_OPTIONS;
-
-    // Message payload, book calls this "RF data"
-        Serial.write('t'); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += 't';
-        Serial.write('e'); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += 'e';
-        Serial.write('s'); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += 's';
-        Serial.write('t'); // SmartHome message RESERVED BYTE
-        ZB_frameChkSum += 't';
-
-    // STOP computing Zigbee API Frame checksum here.
-
-    //Serial.write(ZB_frameChkSum); // Zigbee API Frame Checksum value
-    Serial.write((byte)33); // Zigbee API Frame Checksum value
-
+    // DEBUG data for testing the transmit
+    myZBframeTX.ZBfrmPayload.SHdestID = BYTESWAP16(0x0102);
+    myZBframeTX.ZBfrmPayload.SHsrcID = BYTESWAP16(0x0304);
+    myZBframeTX.ZBfrmPayload.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+    myZBframeTX.ZBfrmPayload.SHcommand = SH_CMD_LOAD_ON;
+    myZBframeTX.ZBfrmPayload.SHstatusH = 0x07;
+    myZBframeTX.ZBfrmPayload.SHstatusL = 0x08;
+    myZBframeTX.ZBfrmPayload.SHstatusVal = 0x09;
+    myZBframeTX.ZBfrmPayload.SHpayldCRC = 0x0a;
+    myZBframeTX.ZBfrmPayload.SHreserved1 = 'T';
+    myZBframeTX.ZBfrmPayload.SHreserved2 = 'X';
 }
 
-
-void zbExperimentalXmitAPIframe2(void)
+// calculate the Zigbee frame checksum for this API TX Request frame
+byte zbFrmCalcTxChksum(void)
 {
-//    byte *txBuffer = (byte *)&myZBframeTX; //get a pointer to byte which points to our Zigbee Frame stuct, to treat it as TX buffer for Serial.write
-    //byte *txBuffer;
-    //txBuffer = (byte *)&myZBframeTX;
-    byte testPayload[12] = { 'H', 'i', '_', 'f', 'r', 'o', 'm', '_', 'U', 'n', 'o', '!' };
-    
-    //init checksum for new Zigbee Frame
-    myZBframeTX.ZBfrmChksum = 0;
+    byte ZBfrmTXchksumCalc = 0;
 
-    //myZBframeTX.ZBfrmID = 1;
-
-    myZBframeTX.ZBfrmDelimiter = ZB_START_DELIM;         // Zigbee Start delimiter
-    myZBframeTX.ZBfrmLength   = ZB_TX_FRM_LEN;          // Zigbee API frame length is num bytes BETWEEN this length and checksum
-    myZBframeTX.ZBfrmType     = ZB_FRAME_TYPE_TX_REQ;    // Transmit Request
-    myZBframeTX.ZBfrmID       = (byte)0x31; //ascii '1' //1;
-    myZBframeTX.ZBdaddr64High = ZB_64ADDR_BCAST_HIGH;   // 64bit dest addr Hich part
-    myZBframeTX.ZBdaddr64Low  = ZB_64ADDR_BCAST_LOW;    // 64bit dest addr Low part
-    myZBframeTX.ZBdaddr16     = ZB_16ADDR_BCAST_INT;    // 16bit dest addr
-    myZBframeTX.ZBfrmRadius   = ZB_BCAST_RADIUS;
-    myZBframeTX.ZBfrmOptions  = ZB_OPTIONS;
-
-    for(i=0; i<ZB_FRM_PAYLOAD_BYTES; i++)
+    for(ZBoffsetTXbuff=ZB_FRM_OFFSET_FTYPE; ZBoffsetTXbuff<ZB_FRM_OFFSET_TX_CHKSUM; ZBoffsetTXbuff++)
     {
-//        myZBframeTX.ZBfrmPayload[i] = testPayload[i];
+        // add to the checksum for this frame
+        ZBfrmTXchksumCalc += txBuffer[ZBoffsetTXbuff];             
     }
-    
-    // calculate frame checksum
-    myZBframeTX.ZBfrmChksum = (byte)25;
 
-    //Serial.write(myZBframeTX, (byte)ZB_TX_FRM_BYTES) ;
-    //Serial.write(myZBframeTX, sizeof(ZBframe)) ;
-    Serial.write(txBuffer, sizeof(ZBframeTX)) ;
-    //Serial.flush();
+    // Final part of Zigbee frame checksum calculation is to subtract current total from 0xff
+    // Save into txbuffer for sending
+    txBuffer[ZBoffsetTXbuff] = 0xff - ZBfrmTXchksumCalc;
+
+    Serial.print(" <<zbTxChksum=");
+    Serial.print(txBuffer[ZB_FRM_OFFSET_TX_CHKSUM], HEX);
+    Serial.print(">> ");
+
+    return(txBuffer[ZB_FRM_OFFSET_TX_CHKSUM]);
 }
 
 
+void debugPrintTxBufferUno(void)
+{
+    Serial.println("");
+    Serial.print("Ready to send a Zigbee API TX Request frame buffer -> ");
+    for(i=0; i<=ZB_FRM_OFFSET_TX_CHKSUM; i++)
+    {
+        Serial.print(txBuffer[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println("");
+}
 
-int zbRcvFrame(void)
+void debugPrintTxBufferDue(void)
+{
+    txBuffer = txBuffer - ZB_TX_FRM_BYTES;
+    
+    Serial.println("");
+    Serial.print("Ready to send a Zigbee API TX Request frame buffer -> ");
+    for(i=0; i<=ZB_FRM_OFFSET_TX_CHKSUM; i++)
+    {
+        Serial.print(txBuffer[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println("");
+}
+
+
+// received frame length value should match ZB_RX_FRM_BYTES
+int zbRcvAPIframe(void)
 {
     byte ZB_frm_byte = 0; // byte received in uart RX by Serial.read    
-    byte ZBfrmRXchmsumCalc = 0;
+    byte ZBfrmRXchksumCalc = 0;
     byte ZBchksumFromSender= 0;
         
     while(Serial.available() > 0)
@@ -577,14 +509,14 @@ int zbRcvFrame(void)
         ZB_frm_byte = Serial.read(); 
         //flipLEDpin(); // change LED when get a byte   
             
-        if((ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIM)) 
+        if((ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIMITER)) 
         {
             // beginning a new frame
             ZBinFrameRX = ZB_IN_FRAME_YES;
             ZBoffsetRXbuff = 0; //Delimiter byte is offset 0 into RX buffer
 //            Serial.print(ZB_frm_byte, HEX); // debug print integer to serial port monitor            
         }
-        else if(ZBinFrameRX == ZB_IN_FRAME_NO)  // and new byte is NOT ZB_START_DELIM
+        else if(ZBinFrameRX == ZB_IN_FRAME_NO)  // and new byte, which is NOT ZB_START_DELIMITER
         {
             // NOT already in a frame, and NOT starting a new frame here, ignore unknown bytes in RX
             return(0);
@@ -597,7 +529,7 @@ int zbRcvFrame(void)
             ZBchksumFromSender = ZB_frm_byte;
 
             //final checksum is ff - the sum of bytes 3 to N-1 (excludes the received checksum value)
-            ZBfrmRXchmsumCalc = 0xff - ZBfrmRXchmsumCalc;
+            ZBfrmRXchksumCalc = 0xff - ZBfrmRXchksumCalc;
 
             // pull out our SmartHome data items into global vars
             extractRXpayload();
@@ -622,7 +554,7 @@ int zbRcvFrame(void)
             if((ZBoffsetRXbuff >= ZB_FRM_OFFSET_FTYPE) && (ZBoffsetRXbuff < ZB_FRM_OFFSET_RX_CHKSUM))
             {
                 // add to the checksum for this frame
-                ZBfrmRXchmsumCalc += ZB_frm_byte;             
+                ZBfrmRXchksumCalc += ZB_frm_byte;             
             }
 
             //increment offset for next byte received in this frame (AFTER checking if should add to checksum)
