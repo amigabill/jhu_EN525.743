@@ -132,6 +132,20 @@
 #define D9 9
 
 
+// TODO - find better place & reorganize
+#define PWM_MIN_COUNT  (uint8_t)0
+#define PWM_MAX_COUNT  (uint8_t)255
+#define PWM_NUM_STEPS   (uint8_t)5
+#define PWM_STEP_VAL   (uint8_t)50
+//#define PWM_STEP_VAL   (uint8_t)(PWM_MAX_COUNT / PWM_NUM_STEPS)
+#define PWM_FULL_OFF   (uint8_t)0
+#define PWM_ON_20PCT  (uint8_t)(1 * (PWM_MAX_COUNT / 5))
+#define PWM_ON_40PCT  (uint8_t)(2 * (PWM_MAX_COUNT / 5))
+#define PWM_ON_60PCT  (uint8_t)(3 * (PWM_MAX_COUNT / 5))
+#define PWM_ON_80PCT  (uint8_t)(4 * (PWM_MAX_COUNT / 5))
+#define PWM_FULL_ON  (uint8_t)PWM_MAX_COUNT
+
+
 #if 0
 // The following LGPL 2.1+ byteswap macros slightly modified from
 // http://repo-genesis3.cbi.utsa.edu/crossref/ns-sli/usr/include/bits/byteswap.h.html
@@ -389,61 +403,61 @@ uint8_t ZB_frameChkSum = 0; //calculate Zigbee Frame checksum here
 // Define a struct for the SmartHome payload portion of the Zigbee API Frame
 typedef struct
 {
-  volatile uint16_t SHdestID;     // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-  volatile uint16_t SHsrcID;      // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-  volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
-  volatile uint8_t  SHcommand;    // 8bit Smarthome command
-  volatile uint8_t  SHstatusH;    // High Byte of 16bit Smarthome
-  volatile uint8_t  SHstatusL;    // Low byte of 16bbit Smarthome
-  volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
-  volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
-  volatile uint8_t  SHreserved2;  // 8bit Smarthome message type
-  volatile uint8_t  SHpayldCRC;   // 8bit Smarthome message type
+    volatile uint16_t SHdestID;     // 16bit Smarthome node ID (inside payload so that it can be encrypted)
+    volatile uint16_t SHsrcID;      // 16bit Smarthome node ID (inside payload so that it can be encrypted)
+    volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
+    volatile uint8_t  SHcommand;    // 8bit Smarthome command
+    volatile uint8_t  SHstatusH;    // High Byte of 16bit Smarthome
+    volatile uint8_t  SHstatusL;    // Low byte of 16bbit Smarthome
+    volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
+    volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
+    volatile uint8_t  SHreserved2;  // 8bit Smarthome message type
+    volatile uint8_t  SHpayldCRC;   // 8bit Smarthome message type
 } SHpayload, *prtSHpayload;
 
 //TODO - change these global vars to another instance of SHpayload struct for TX and again for TX
-uint16_t SHdestIDrx = 0;
-uint16_t SHsrcIDrx = 0;
-uint8_t  SHmsgTypeRX = 0;
-uint8_t  SHcommandRX = 0;
-uint16_t SHstatusIDrx = 0; //16bits
-uint8_t  SHstatusHrx = 0; // 8bits High of SHstatusIDrx
-uint8_t  SHstatusLrx = 0; // 8bits Low of SHstatusIDrx
-uint8_t  SHstatusValRX = 0;
-uint8_t  SHchksumRX = 0;
-uint8_t  SHreserved1rx = 0;
-uint8_t  SHreserved2rx = 0;
+volatile uint16_t SHdestIDrx = 0;
+volatile uint16_t SHsrcIDrx = 0;
+volatile uint8_t  SHmsgTypeRX = 0;
+volatile uint8_t  SHcommandRX = 0;
+volatile uint16_t SHstatusIDrx = 0; //16bits
+volatile uint8_t  SHstatusHrx = 0; // 8bits High of SHstatusIDrx
+volatile uint8_t  SHstatusLrx = 0; // 8bits Low of SHstatusIDrx
+volatile uint8_t  SHstatusValRX = 0;
+volatile uint8_t  SHchksumRX = 0;
+volatile uint8_t  SHreserved1rx = 0;
+volatile uint8_t  SHreserved2rx = 0;
 
 //TODO - change these global vars to another instance of SHpayload struct for TX and again for TX
-uint16_t SHdestIDtx = 0;
-uint16_t SHsrcIDtx = 0;
-uint8_t  SHmsgTypeTX = 0;
-uint8_t  SHcommandTX = 0;
-uint16_t SHstatusIDtx = 0; //16bits
-uint8_t  SHstatusHtx = 0; // 8bits High of SHstatusIDrx
-uint8_t  SHstatusLtx = 0; // 8bits Low of SHstatusIDrx
-uint8_t  SHstatusValTX = 0;
-uint8_t  SHchksumTX = 0;
-uint8_t  SHreserved1tx = 0;
-uint8_t  SHreserved2tx = 0;
+volatile uint16_t SHdestIDtx = 0;
+volatile uint16_t SHsrcIDtx = 0;
+volatile uint8_t  SHmsgTypeTX = 0;
+volatile uint8_t  SHcommandTX = 0;
+volatile uint16_t SHstatusIDtx = 0; //16bits
+volatile uint8_t  SHstatusHtx = 0; // 8bits High of SHstatusIDrx
+volatile uint8_t  SHstatusLtx = 0; // 8bits Low of SHstatusIDrx
+volatile uint8_t  SHstatusValTX = 0;
+volatile uint8_t  SHchksumTX = 0;
+volatile uint8_t  SHreserved1tx = 0;
+volatile uint8_t  SHreserved2tx = 0;
 
 
 // Define a struct for the Zigbee TX Request API frame
 typedef struct
 {
-  volatile uint8_t ZBfrmDelimiter;
-  volatile uint16_t  ZBfrmLength;
-  volatile uint8_t ZBfrmType;
-  volatile uint8_t ZBfrmID;
-  volatile uint32_t ZBdaddr64High;
-  volatile uint32_t ZBdaddr64Low;
-  volatile uint16_t  ZBdaddr16;
-  volatile uint8_t ZBfrmRadius;
-  volatile uint8_t ZBfrmOptions;
-  //volatile uint8_t ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
-  volatile SHpayload ZBfrmPayload;
-  //SHpayload     ZBfrmPayload;
-  volatile uint8_t ZBfrmChksum;;
+    volatile uint8_t    ZBfrmDelimiter;
+    volatile uint16_t   ZBfrmLength;
+    volatile uint8_t    ZBfrmType;
+    volatile uint8_t    ZBfrmID;
+    volatile uint32_t   ZBdaddr64High;
+    volatile uint32_t   ZBdaddr64Low;
+    volatile uint16_t   ZBdaddr16;
+    volatile uint8_t    ZBfrmRadius;
+    volatile uint8_t    ZBfrmOptions;
+    //volatile uint8_t    ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
+    volatile SHpayload  ZBfrmPayload;
+    //SHpayload         ZBfrmPayload;
+    volatile uint8_t    ZBfrmChksum;;
 } ZBframeTX, *prtZBframeTX;
 
 ZBframeTX     myZBframeTX;
@@ -454,16 +468,16 @@ uint8_t       debugBufferTX[ZB_TX_FRM_BYTES];
 // define a struct for the Zigbee RX Received API frame
 typedef struct
 {
-  volatile uint8_t ZBfrmDelimiter;
-  volatile uint16_t  ZBfrmLength;
-  volatile uint8_t ZBfrmType;
-  volatile uint32_t ZBsaddr64High;
-  volatile uint32_t ZBsaddr64Low;
-  volatile uint16_t  ZBsaddr16;
-  volatile uint8_t ZBfrmOptions;
-  //volatile uint8_t ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
-  SHpayload     ZBfrmPayload;
-  volatile uint8_t ZBfrmChksum;;
+    volatile uint8_t   ZBfrmDelimiter;
+    volatile uint16_t  ZBfrmLength;
+    volatile uint8_t   ZBfrmType;
+    volatile uint32_t  ZBsaddr64High;
+    volatile uint32_t  ZBsaddr64Low;
+    volatile uint16_t  ZBsaddr16;
+    volatile uint8_t   ZBfrmOptions;
+    //volatile uint8_t   ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
+    SHpayload          ZBfrmPayload;
+    volatile uint8_t   ZBfrmChksum;;
 } ZBframeRX, *prtZBframeRX;
 
 ZBframeRX     myZBframeRX; //global variable to use
@@ -501,11 +515,14 @@ uint8_t ledPinState = 0;
 // input pins
 #define PIN_BUTTON_UP         HIGH
 #define PIN_BUTTON_DOWN       LOW
-#define PIN_ON_OFF            (uint16_t)A0
-#define PIN_BRIGHER           (uint16_t)A1
-#define PIN_DIMMER            (uint16_t)A2
-#define PIN_AC_ZERO_CROSS     (uint16_t)A4
-#define PIN_XBCONFIG          (uint16_t)A5
+#define PIN_ON_OFF            (uint16_t)A0  //Grey
+#define PIN_ON                (uint16_t)A0  //Grey
+#define PIN_BRIGHER           (uint16_t)A1  //Green
+#define PIN_DIMMER            (uint16_t)A2  //Red
+#define PIN_AC_ZERO_CROSS     (uint16_t)A4  //Blue
+#define PIN_CHANGE_LOAD       (uint16_t)A4  //Blue
+#define PIN_XBCONFIG          (uint16_t)A5  //Yellow
+#define PIN_OFF               (uint16_t)A5  //Yellow
 #define AC0CROSS_AT_CROSSING  LOW
 #define AC0CROSS_NO_CROSSING  HIGH
 
@@ -519,18 +536,26 @@ uint8_t ledPinState = 0;
 #define PIN_LED_BLUE      PIN_CTRL_LIGHT
 #define PIN_LED_GREEN     PIN_CTRL_FAN
 
-volatile uint8_t buttonOnOffPrev    = PIN_BUTTON_UP;
-volatile uint8_t buttonBrighterPrev = PIN_BUTTON_UP;
-volatile uint8_t buttonDimmerPrev   = PIN_BUTTON_UP;
-volatile uint8_t buttonXBconfigPrev = PIN_BUTTON_UP;
-volatile uint8_t inXbeeConfigMode   = NO;
-volatile uint8_t AC0CrossPrev       = AC0CROSS_NO_CROSSING;
+// DEBUG pushbuttons while developing/debugging parts of this code
+volatile uint8_t buttonOnOffPrev      = PIN_BUTTON_UP;
+volatile uint8_t buttonOnPrev         = PIN_BUTTON_UP;
+volatile uint8_t buttonOffPrev        = PIN_BUTTON_UP;
+volatile uint8_t buttonBrighterPrev   = PIN_BUTTON_UP;
+volatile uint8_t buttonDimmerPrev     = PIN_BUTTON_UP;
+volatile uint8_t buttonChangeLoadPrev = PIN_BUTTON_UP;
+
+// A real button that can remain in production, to aid in programming the Xbee module
+volatile uint8_t buttonXBconfigPrev   = PIN_BUTTON_UP;
+volatile uint8_t inXbeeConfigMode     = NO;
+
+// Trigger signal from ZeroCross Tail unit for AC line sinewave timing of PWM
+volatile uint8_t AC0CrossPrev         = AC0CROSS_NO_CROSSING;
 
 
 #define NODE_INFO_INDEX_LIGHT 0  // the 0th index into NodeInfo array is for the light
 #define NODE_INFO_INDEX_FAN   1  // the 1st index into NodeInfo array is for the fan
-//uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_LIGHT;  // 
-uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_FAN;  // 
+volatile uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_LIGHT;  // 
+//volatile uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_FAN;  // 
 
 
 // Initialize things at boot time, before starting the main program loop below
@@ -666,6 +691,10 @@ uint8_t initNodeInfoUno(void)
     mySHnodeMasterInfo.nodeInfo[i].SHthisNodePin          = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_PIN);
     mySHnodeMasterInfo.nodeInfo[i].SHthisNodeLevelFav     = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_FAV_INTSTY);
     mySHnodeMasterInfo.nodeInfo[i].SHthisNodeLevelCurrent = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY);
+    mySHnodeMasterInfo.nodeInfo[i].SHthisNodeIsPowered    = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_POWERED);
+
+//            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
 
     mySHnodeMasterInfo.nodeInfo[i].SHmsgCurrentState = SH_MSG_ST_IDLE;
     mySHnodeMasterInfo.nodeInfo[i].SHmsgNextState    = SH_MSG_ST_IDLE;
@@ -756,6 +785,7 @@ void programEEPROMnodeInfo(uint8_t  nodeNumber,         // first node is num 0, 
   EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_POWERED), powered );
   EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY), currentIntensity );
   EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_FAV_INTSTY), favoriteIntensity );
+  EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
 
   Serial.println("Completed programming EEPROM values");
 }
@@ -763,6 +793,7 @@ void programEEPROMnodeInfo(uint8_t  nodeNumber,         // first node is num 0, 
 
 // Transmit a Zigbee API TX Request Frame
 // Each Zigbee message frame has a 12byte payload, so length=23=0x17 bytes, total frame=27bytes
+// FIXME
 void zbXmitAPIframe(void)
 {
   myZBframeTX.ZBfrmDelimiter = ZB_START_DELIMITER;
@@ -1401,6 +1432,7 @@ void flipLEDpin(void)
 }
 
 #if 0
+// TODO cleanup
 void pcintSetup(byte pin)
 {
   *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
@@ -1422,7 +1454,7 @@ ISR (PCINT0_vect)
       triggerTriac();
   } 
 }
- #endif
+#endif
 
 
 
@@ -1450,7 +1482,7 @@ void enablePCint(byte pin)
 
 // NOT YET WORKING
 // turn the load on or off. If off, turn on to the previous intensity level, not necessarily 100%-on
-void lightToggle(uint8_t nodeInfoIndex)
+void loadToggle(uint8_t nodeInfoIndex)
 {
     if(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == LOAD_POWERED_ON)  // Load is currently powered ON (possibly dim/slow, but ON)
     {
@@ -1467,7 +1499,7 @@ void lightToggle(uint8_t nodeInfoIndex)
         digitalWrite(PIN_CTRL_LIGHT, PIN_LED_ON);
     }
 
-    Serial.print("DEBUG - In lightToggle(), new intensity value=");  
+    Serial.print("DEBUG - In loadToggle(), new intensity value=");  
     Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered, DEC);
     Serial.print("for NodeInfoIndex=");
     Serial.println(nodeInfoIndex);
@@ -1480,15 +1512,76 @@ void lightToggle(uint8_t nodeInfoIndex)
     // calculate new PWM value for analogWrite() call
 }
 
+// If load is currently full-OFF, then apply power to previous current intensity level
+// (ON/OFF is essentially an enable condition to the current intensity level)
+void loadPowerON(uint8_t nodeInfoIndex)
+{
+    uint16_t tmpVal = 0;
+
+    Serial.print("DEBUG - In loadPowerON()");    
+
+    if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == NO)
+    {
+        tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+
+        // sanity check
+        if( (tmpVal > PWM_MAX_COUNT) )
+        {
+            tmpVal = PWM_MAX_COUNT;
+        }
+
+        analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, tmpVal);
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent = tmpVal;
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY), tmpVal );
+
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = YES;
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), YES );
+        
+        Serial.print(" ; Load ");
+        Serial.print(nodeInfoIndex, DEC);
+        Serial.print(" is now ON at intensity = ");
+        Serial.println(tmpVal, DEC);
+    }
+    else
+    {
+        Serial.println(" ; Already ON, do nothing");      
+    }
+}
+
+
+// If load is currently full-OFF, then apply power to previous current intensity level
+// (ON/OFF is essentially an enable condition to the current intensity level)
+void loadPowerOFF(uint8_t nodeInfoIndex)
+{
+    Serial.print("DEBUG - In loadPowerOFF()");    
+
+    if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == YES)
+    {
+        analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, PWM_MIN_COUNT);
+
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
+        
+        Serial.print(" ; Load ");
+        Serial.print(nodeInfoIndex, DEC);
+        Serial.println(" is now OFF");
+    }
+    else
+    {
+        Serial.println(" ; Already OFF, do nothing");      
+    }
+}
+
+
 // increase intensity level one step
-void lightBrighter(uint8_t nodeInfoIndex)
+void loadIncreaseIntensity(uint8_t nodeInfoIndex)
 {
     uint16_t tmpVal = 0;
 //    uint8_t tmpVal = 0;
 
 //mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin          = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_PIN);
 
-    Serial.print("DEBUG - In lightBrighter()");    
+    Serial.print("DEBUG - In loadIncreaseIntensity()");    
 
     tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
 
@@ -1513,14 +1606,13 @@ void lightBrighter(uint8_t nodeInfoIndex)
     Serial.println(tmpVal, DEC);
 }
 
-
 // decrease intensity level one step
-void lightDimmer(uint8_t nodeInfoIndex)
+void loadDecreaseIntensity(uint8_t nodeInfoIndex)
 {
     uint16_t tmpVal = 0;
 //    uint8_t tmpVal = 0;
 
-    Serial.print("DEBUG - In lightDimmer()");    
+    Serial.print("DEBUG - In loadDecreaseIntensity()");    
 
 //    tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent - PWM_STEP_VAL;
     tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
@@ -1545,10 +1637,34 @@ void lightDimmer(uint8_t nodeInfoIndex)
 }
 
 
-// trigger the AC line triacs to fire, turning on 
-void fireTriac(uint8_t nodeInfoIndex)
+// Change control to the next load on this target node
+void changeLoad(uint8_t nodeInfoIndex)
 {
-    Serial.println("DEBUG - In fireTriac()");    
+    Serial.print("DEBUG - In changeLoad()");    
+
+    nodeInfoIndex+= 1;
+
+    // Check if at last one
+    if( nodeInfoIndex == mySHnodeMasterInfo.numNodeIDs)
+    {
+        // Go back to first one
+        currentNodeInfoIndex = 0;
+    }
+    else
+    {
+        // Go to next one
+        currentNodeInfoIndex = nodeInfoIndex;
+    }
+
+    Serial.print(" ; Now controlling Load  ");
+    Serial.println(currentNodeInfoIndex, DEC);
+}
+
+
+// trigger the AC line triacs to fire, turning on 
+void enableSSRrelay(uint8_t nodeInfoIndex)
+{
+    Serial.println("DEBUG - In enableSSRrelay()");    
 //    analogWrite(pin, 0); // disable the PWM to the load triacs
 //    TODO - add PWM output pin ID to the load's NodeInfo structure in EEPROM, for analogWrite calls
 // calculate new PWM value in places that change the current intensity, and in powerOn setup function
@@ -1559,11 +1675,25 @@ void fireTriac(uint8_t nodeInfoIndex)
 // Interrupt vector handling routine for A0 to A5 Pin Change Interrupt inputs
 ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 {
+#if 0  
+    // check if AC Zero cross trigger OR debug Blue button
     if( (digitalRead(PIN_AC_ZERO_CROSS) == AC0CROSS_AT_CROSSING) && (AC0CrossPrev   == AC0CROSS_NO_CROSSING) )
     {
-        fireTriac(currentNodeInfoIndex);
+        enableSSRrelay(currentNodeInfoIndex);
     }
     else
+#else
+        // check if debug Blue button
+        if( (digitalRead(PIN_CHANGE_LOAD) == PIN_BUTTON_DOWN) && (buttonDimmerPrev   == PIN_BUTTON_UP) )
+        {
+            // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
+            delay(60);
+            if(digitalRead(PIN_CHANGE_LOAD) == PIN_BUTTON_DOWN)
+            {
+                changeLoad(currentNodeInfoIndex);         
+            }        
+        }
+#endif
     {
 
         // manual bushbuttons are used for early dev/debug of load control events processing.
@@ -1571,36 +1701,35 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         // comment out the pushbutton code or delete it. In final production system,
         // it is not expected to have these debounce delay statements here, which might affect the 
         // 60Hz AC Zero-Crossing trigger reliability.
+
+#if 0
+        // check if debug Grey button
         if( (digitalRead(PIN_ON_OFF) == PIN_BUTTON_DOWN) && (buttonOnOffPrev   == PIN_BUTTON_UP) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(60);
             if(digitalRead(PIN_ON_OFF) == PIN_BUTTON_DOWN)
             {
-                lightToggle(currentNodeInfoIndex);         
+                // (ON/OFF is essentially an enable condition to the current intensity level)
+                loadToggle(currentNodeInfoIndex);         
             }
         }
-
-        if( (digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN) && (buttonBrighterPrev   == PIN_BUTTON_UP) )
+#else
+        // check if debug Grey button
+        if( (digitalRead(PIN_ON) == PIN_BUTTON_DOWN) && (buttonOnPrev   == PIN_BUTTON_UP) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(60);
-            if(digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN)
+            if(digitalRead(PIN_ON) == PIN_BUTTON_DOWN)
             {
-                lightBrighter(currentNodeInfoIndex);         
-            }        
+                // (ON/OFF is essentially an enable condition to the current intensity level)
+                loadPowerON(currentNodeInfoIndex);         
+            }
         }
+#endif
 
-        if( (digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN) && (buttonDimmerPrev   == PIN_BUTTON_UP) )
-        {
-            // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(60);
-            if(digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN)
-            {
-                lightDimmer(currentNodeInfoIndex);         
-            }        
-        }
-
+#if 0
+        // check if debug Yellow button
         if( (digitalRead(PIN_XBCONFIG) == PIN_BUTTON_DOWN) && (buttonXBconfigPrev   == PIN_BUTTON_UP) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
@@ -1610,6 +1739,43 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
                 toggleXbeeConfigMode();          
             }
         }
+#else
+        // check if debug Yellow button
+        if( (digitalRead(PIN_OFF) == PIN_BUTTON_DOWN) && (buttonOffPrev   == PIN_BUTTON_UP) )
+        {
+            // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
+            delay(60);
+            if(digitalRead(PIN_OFF) == PIN_BUTTON_DOWN)
+            {
+                // (ON/OFF is essentially an enable condition to the current intensity level)
+                loadPowerOFF(currentNodeInfoIndex);         
+            }
+        }
+#endif
+
+
+        // check if debug Green button
+        if( (digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN) && (buttonBrighterPrev   == PIN_BUTTON_UP) )
+        {
+            // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
+            delay(60);
+            if(digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN)
+            {
+                loadIncreaseIntensity(currentNodeInfoIndex);         
+            }        
+        }
+
+        // check if debug Red button
+        if( (digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN) && (buttonDimmerPrev   == PIN_BUTTON_UP) )
+        {
+            // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
+            delay(60);
+            if(digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN)
+            {
+                loadDecreaseIntensity(currentNodeInfoIndex);         
+            }        
+        }
+
     }
 }  
 
@@ -1663,28 +1829,37 @@ void setupPWM(void)
 void setupPCint(void) 
 {  
     buttonOnOffPrev    = PIN_BUTTON_UP;
+    buttonOnPrev       = PIN_BUTTON_UP;
+    buttonOffPrev      = PIN_BUTTON_UP;
     buttonBrighterPrev = PIN_BUTTON_UP;
     buttonDimmerPrev   = PIN_BUTTON_UP;
     buttonXBconfigPrev = PIN_BUTTON_UP;
+    buttonChangeLoadPrev = PIN_BUTTON_UP;
 
     AC0CrossPrev       = AC0CROSS_NO_CROSSING;
     inXbeeConfigMode   = NO;
 
     pinMode(PIN_LED_XBCONFIG,OUTPUT);  // LED PIN_LED_RED
 
-    // User input pushbuttone
-    digitalWrite(PIN_ON_OFF,HIGH);
-    digitalWrite(PIN_BRIGHER,HIGH);
-    digitalWrite(PIN_DIMMER,HIGH);
-    digitalWrite(PIN_AC_ZERO_CROSS,HIGH);
-    digitalWrite(PIN_XBCONFIG,HIGH);
- 
+    // User input pushbuttons
+//    digitalWrite(PIN_ON_OFF,HIGH);         // Grey
+    digitalWrite(PIN_ON,HIGH);             // Grey
+    digitalWrite(PIN_BRIGHER,HIGH);        // Green
+    digitalWrite(PIN_DIMMER,HIGH);         // Red
+//    digitalWrite(PIN_AC_ZERO_CROSS,HIGH);  // Blue
+    digitalWrite(PIN_CHANGE_LOAD,HIGH);  // Blue
+//    digitalWrite(PIN_XBCONFIG,HIGH);       // Yellow
+    digitalWrite(PIN_OFF,HIGH);            // Yellow
+
     
     // enable Pin Change Interrupt for pin...
-    enablePCint(PIN_ON_OFF);
+//    enablePCint(PIN_ON_OFF);
+    enablePCint(PIN_ON);
     enablePCint(PIN_BRIGHER);
     enablePCint(PIN_DIMMER);
-    enablePCint(PIN_AC_ZERO_CROSS);
-    enablePCint(PIN_XBCONFIG);
+//    enablePCint(PIN_AC_ZERO_CROSS);
+    enablePCint(PIN_CHANGE_LOAD);
+//    enablePCint(PIN_XBCONFIG);
+    enablePCint(PIN_OFF);
 }
 
