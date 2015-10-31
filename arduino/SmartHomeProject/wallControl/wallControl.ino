@@ -14,9 +14,10 @@
 #include <SD.h>
 
 ////#include "SmartHome_Zigbee.h"
-//#include <SmartHome_Zigbee.h>
+#include <SmartHome_Zigbee.h>
+SHzigbee mySHzigbee = SHzigbee();
 
-#include <ByteSwap.h>
+//#include <ByteSwap.h>
 
 
 // This is calibration data for the raw touch data to the screen coordinates
@@ -61,175 +62,6 @@ const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
 
 
 
-typedef struct
-{
-    volatile uint16_t SHothrID;
-    volatile uint8_t  SHmsgType;
-    volatile uint8_t  SHcommand;
-    volatile uint8_t  SHstatusH;
-    volatile uint8_t  SHstatusL;
-    volatile uint16_t SHstatusID; // 16bit alternative to SHstatusH and SHstatusL but represents same bytes in message
-    volatile uint8_t  SHstatusVal;
-    volatile uint8_t  SHreserved1;
-    volatile uint8_t  SHreserved2;
-    volatile uint8_t  SHchksum;     // form this node or defined by another node
-    volatile uint8_t  SHcalcChksum; // checksum calculated for comparison to sender's value
-    volatile uint8_t  SHstatusTX;  // status of attempt to transmit a Zigbee API frame
-    volatile uint8_t  SHstatusRX;  // status of receiving a Zigbee API frame
-} SHmessage, *prtSHmessage;
-
-
-
-// SH message protocol stages / states
-#define SH_MSG_ST_IDLE      (uint8_t)0x00  // waiting to receive a command message
-#define SH_MSG_ST_CMD_INIT  (uint8_t)0x01  // begin an SH protocol message conversation
-#define SH_MSG_ST_ACK_REQ   (uint8_t)0x02  // achnowledge receipt of a CMD_INIT message, request confirmation
-#define SH_MSG_ST_CNFRM     (uint8_t)0x03  // confirm that this node sent a CMD_INIT message to indicated destination
-#define SH_MSG_ST_COMPLETE  (uint8_t)0x04  // complete the SH protocol conversation, include status value        
-
-// use node-specific versions of these instead, in the nodeInfo msg struct
-//uint8_t currentMsgState = SH_MSG_ST_IDLE;
-//uint8_t nextMsgState    = SH_MSG_ST_IDLE;
-
-// The 4 types of SmartHome message to be sent over Zigbee as payload.SHmsgType
-// together these four messages ame up one SmartHome protocol "conversation"
-#define SH_MSG_TYPE_IDLE      (uint8_t)0x00 // NO active message for this node
-#define SH_MSG_TYPE_CMD_REQ   (uint8_t)0x01 // Request recipient to run a new command
-#define SH_MSG_TYPE_ACK_CREQ  (uint8_t)0x02 // ACKnowledge new command received, Request Confirmation from Sender
-#define SH_MSG_TYPE_CONFIRM   (uint8_t)0x03 // Sender Confirms it did indeed initiate this new command request
-#define SH_MSG_TYPE_COMPLETED (uint8_t)0x04 // Recipient indicates command has been executed and completed
-
-// SmartHome node Status Values
-#define SH_STATUS_SUCCESS       (uint8_t)0x00
-#define SH_STATUS_FAILED        (uint8_t)0x01
-#define SH_STATUS_CONFIRMED     (uint8_t)0x02
-#define SH_STATUS_NOT_CONFIRMED (uint8_t)0x03
-
-
-// SH Message protocol fixed status values
-#define SH_MSG_STATUS_SUCCESS            0x01  // command completed successfully
-#define SH_MSG_STATUS_ERR_INVLD_SENDER   0x02  // addressed sender of command denied sending it
-#define SH_MSG_STATUS_ERR_WRNG_RCPT_TYPE 0x03  // recipient of the command is wrong type for command
-// such as if wall control received an on/off/intensity command
-
-
-// SmartHome node Commands
-#define SH_CMD_NOP               (uint8_t)0x00 // No OPeration, do nothing
-#define SH_CMD_LOAD_ON           (uint8_t)0x01 // Turn on the target load at this node
-#define SH_CMD_LOAD_OFF          (uint8_t)0x02 // Turn off the target load at this node
-#define SH_CMD_LOAD_INC          (uint8_t)0x03 // increase intensity at target load (brighter/faster)
-#define SH_CMD_LOAD_DEC          (uint8_t)0x04 // decrease intensity at target load (dimmer/slower)
-#define SH_CMD_LOAD_SETFAV       (uint8_t)0x05 // Set user favorite intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_SAVEFAV      (uint8_t)0x06 // save current intensity as target load user favorite level (brightness/speed)
-#define SH_CMD_LOAD_READFAV      (uint8_t)0x07 // read the saved favorite intensity at target load and xmit back to another node (brightness/speed))
-#define SH_CMD_LOAD_READCRNT     (uint8_t)0x08 // read the current active intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // decrease intensity at target load (dimmer/slower)
-
-
-//#define SH_RESERVED_BYTE 0x00
-#define SH_RESERVED_BYTE 'R'
-
-// Informational things only
-#define ZB_ID_COORD 0x00        // The Zigbee coordinator is always ID 0
-#define ZB_ID_PAN   0x42        // The ID for the local network. Other networks are on different PAN IDs.
-
-
-// Zigbee API frame stuff
-#define ZB_START_DELIMITER           (uint8_t)0x7e // indicates start of a Zigbee frame
-#define ZB_FRAME_TYPE_ATCMD_IMD      (uint8_t)0x08 // Transmit Request
-#define ZB_FRAME_TYPE_ATCMD_QUE      (uint8_t)0x09 // Transmit Request
-#define ZB_FRAME_TYPE_REMCMD_REQ     (uint8_t)0x17 // Transmit Request
-#define ZB_FRAME_TYPE_ATCMD_RESP     (uint8_t)0x88 // Transmit Request
-#define ZB_FRAME_TYPE_MDM_ST         (uint8_t)0x8a // Modem Status
-#define ZB_FRAME_TYPE_TX_REQ         (uint8_t)0x10 // Transmit Request (send a payload)
-#define ZB_FRAME_TYPE_TX_RESP        (uint8_t)0x8b // Transmit Response
-#define ZB_FRAME_TYPE_RX_RCVD        (uint8_t)0x90 // RX Received (someone sent a payload to us)
-#define ZB_FRAME_TYPE_RX_IOD_RCVD    (uint8_t)0x92 // RX IO Data Received
-#define ZB_FRAME_TYPE_NODE_ID_IND    (uint8_t)0x95 // Node ID Indicator
-#define ZB_FRAME_TYPE_REMCMD_RESP    (uint8_t)0x95 // Remote Command Response
-
-
-#define ZB_64ADDR_BCAST_HIGH (uint32_t)0x00000000 //64bit BCAST is 0x000000000000ffff
-#define ZB_64ADDR_BCAST_LOW  (uint32_t)0x0000ffff //64bit BCAST is 0x000000000000ffff
-
-#define ZB_16ADDR_BCAST (uint16_t)0xfffe   // 16addr bcast or unknown
-
-#define ZB_BCAST_RADIUS (uint8_t)0x00
-#define ZB_OPTIONS      (uint8_t)0x00
-
-
-// Define a struct for the SmartHome payload portion of the Zigbee API Frame
-typedef struct
-{
-    volatile uint16_t SHdestID;     // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint16_t SHsrcID;      // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
-    volatile uint8_t  SHcommand;    // 8bit Smarthome command
-    volatile uint8_t  SHstatusH;    // High Byte of 16bit Smarthome
-    volatile uint8_t  SHstatusL;    // Low byte of 16bbit Smarthome
-    volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved2;  // 8bit Smarthome message type
-    volatile uint8_t  SHpayldChksum;   // 8bit Smarthome message type
-} SHpayload, *prtSHpayload;
-
-#if 0
-typedef struct
-{
-    volatile uint8_t  SHdestID_H;   // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHdestID_L;   // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHsrcID_H;    // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHsrcID_L;    // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
-    volatile uint8_t  SHcommand;    // 8bit Smarthome command
-    volatile uint8_t  SHstatusH;    // High Byte of 16bit Smarthome
-    volatile uint8_t  SHstatusL;    // Low byte of 16bbit Smarthome
-    volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved2;  // 8bit Smarthome message type
-    volatile uint8_t  SHpayldChksum;   // 8bit Smarthome message type
-} ZBbufferSHpayload;
-#endif
-
-// Offsets into the SmartHome Message (Zigbee Payload/RF Data)
-#define SH_MSG_OFFSET_ID_DEST_H    0
-#define SH_MSG_OFFSET_ID_DEST_L    1
-#define SH_MSG_OFFSET_ID_SRC_H     2
-#define SH_MSG_OFFSET_ID_SRC_L     3
-#define SH_MSG_OFFSET_MSG_TYPE     4
-#define SH_MSG_OFFSET_CMD          5
-#define SH_MSG_OFFSET_STATUS_H     6
-#define SH_MSG_OFFSET_STATUS_L     7
-#define SH_MSG_OFFSET_STATUS_VAL   8
-#define SH_MSG_OFFSET_RESVD_1      9
-#define SH_MSG_OFFSET_RESVD_2     10
-#define SH_MSG_OFFSET_CHKSUM      11
-
-
-// Define a struct for the Zigbee TX Request API frame
-typedef struct
-{
-    volatile uint8_t    ZBfrmDelimiter;
-    volatile uint16_t   ZBfrmLength;
-    volatile uint8_t    ZBfrmType;
-    volatile uint8_t    ZBfrmID;
-    volatile uint32_t   ZBdaddr64High;
-    volatile uint32_t   ZBdaddr64Low;
-    volatile uint16_t   ZBdaddr16;
-    volatile uint8_t    ZBfrmRadius;
-    volatile uint8_t    ZBfrmOptions;
-    volatile SHpayload  ZBfrmPayload;
-    volatile uint8_t    ZBfrmChksum;;
-} ZBframeTX, *prtZBframeTX;
-
-ZBframeTX     myZBframeTX;
-////prtZBframeTX  ptrMyZBframeTX = &myZBframeTX;
-//uint8_t ZBfrmBufferTX[30];
-
-
-#define ZB_IN_FRAME_YES 1
-#define ZB_IN_FRAME_NO  0
-
 
 
 
@@ -252,21 +84,7 @@ void setup() {
     } 
     else { 
         Serial.println("Touchscreen started."); 
-#if 0
-        // 20151026 wtoner - changed form ZYX mode to only XY mode.
-        //writeRegister8(STMPE_TSC_CTRL, STMPE_TSC_CTRL_XYZ | STMPE_TSC_CTRL_EN); // XYZ and enable!
-        tmpR8 = ts.readRegister8(STMPE_TSC_CTRL); // XY and enable 
-        tmpR8 &= ~STMPE_TSC_CTRL_EN;
-        ts.writeRegister8(STMPE_TSC_CTRL, tmpR8); // XY and enable 
-        ts.writeRegister8(STMPE_TSC_CTRL, STMPE_TSC_CTRL_XY | STMPE_TSC_CTRL_EN); // XY and enable 
-#endif
-
-        // clear the FIFO data
-//        ts.writeRegister8(STMPE_FIFO_STA, STMPE_FIFO_STA_RESET);
-//        ts.writeRegister8(STMPE_FIFO_STA, 0x00); // reset all ints
-
         ts.writeRegister8(STMPE_INT_STA, 0xFF); // reset all ints
-        //ts.getPoint(); // clear out bogus initial touch event
     }
   
     Serial.print("Initializing SD card...");
@@ -280,10 +98,10 @@ void setup() {
 
 #if 1
     // Attempt to transmit a TX frame for debugging
-    initXmitAPIframe();
+//    mySHzigbee.initXmitAPIframe();
 
     // Fill TX frame payload (SH message) with current message values
-    prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
+    mySHzigbee.prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
                   (uint16_t)0xf00d,    // SH src ID
                   SH_MSG_TYPE_CMD_REQ, // SH msg Type
                   SH_CMD_LOAD_ON,      // SH command
@@ -291,13 +109,13 @@ void setup() {
                   (uint8_t)0x00,       // SH statusL
                   (uint8_t)0x00        // SH statusVal
                 );
-#endif
 
     // send our prepared ZB TX frame out uart to Xbee module for Zigbee transmit
-    zbXmitAPIframe();
+    mySHzigbee.zbXmitAPIframe();
 
     Serial.println("");
     Serial.println("");
+#endif
 }
 
 
@@ -593,307 +411,6 @@ uint32_t read32(File &f) {
   return result;
 }
 
-
-
-// TODO clean up TX vs RX when are same thing (LEN bytes, ADDR64 bytes etc)
-#define ZB_TX_FRM_DELMTR_BYTES   0x01
-#define ZB_TX_FRM_LEN_BYTES      0x02
-#define ZB_TX_FRM_TYPE_BYTES     0x01
-#define ZB_TX_FRM_ID_BYTES       0x01
-#define ZB_TX_FRM_DADDR64_BYTES  0x08
-#define ZB_TX_FRM_DADDR16_BYTES  0x02
-#define ZB_TX_FRM_BRADIUS_BYTES  0x01
-#define ZB_TX_FRM_OPTIONS_BYTES  0x01
-#define ZB_TX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
-#define ZB_RX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
-
-#define ZB_FRM_PAYLOAD_BYTES    12  // fixed number in this design
-#define ZB_TX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
-#define ZB_TX_FRM_CHKSUM_BYTES  1
-#define ZB_TX_FRM_BYTES          (uint16_t)(ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES)
-#define ZB_TX_FRM_BYTES_SH_MAX   (ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES) // max bytes SmartHome nodes should expect to receive in a ZB frame
-
-#define ZB_RX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
-#define ZB_RX_FRM_BYTES         (uint16_t)(ZB_RX_FRM_HEADER_BYTES + ZB_RX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES)
-#define ZB_RX_FRM_BYTES_INT     (uint16_t)ZB_RX_FRM_BYTES
-
-#define ZB_TX_FRM_LEN  (uint16_t)(ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES + ZB_FRM_PAYLOAD_BYTES)
-#define ZB_RX_FRM_LEN  (uint16_t)(ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_OPTIONS_BYTES + ZB_FRM_PAYLOAD_BYTES)
-
-// Common frame offsets (for both TX and RX frames)
-#define ZB_FRM_OFFSET_DELMTR        0   // value at this offset MUST be 0x7e
-#define ZB_FRM_OFFSET_LENH          1
-#define ZB_FRM_OFFSET_LENL          2
-#define ZB_FRM_OFFSET_FTYPE         3   // Zigbee frame type  
-
-// TX Request frame offsets
-#define ZB_FRM_OFFSET_FID           4   // Zigbee Frame ID
-#define ZB_FRM_OFFSET_TX_DADDR64BH  5   // High 32bits of Zigbee 64bit addr
-#define ZB_FRM_OFFSET_TX_DADDR64B7  5
-#define ZB_FRM_OFFSET_TX_DADDR64B6  6
-#define ZB_FRM_OFFSET_TX_DADDR64B5  7
-#define ZB_FRM_OFFSET_TX_DADDR64B4  8
-#define ZB_FRM_OFFSET_TX_DADDR64BL  9   // Low 32bits of Zigbee 64bit addr
-#define ZB_FRM_OFFSET_TX_DADDR64B3  9
-#define ZB_FRM_OFFSET_TX_DADDR64B2  10
-#define ZB_FRM_OFFSET_TX_DADDR64B1  11
-#define ZB_FRM_OFFSET_TX_DADDR64B0  12
-#define ZB_FRM_OFFSET_TX_DADDR16H   13  // High Byte of Zigbee 16bit addr
-#define ZB_FRM_OFFSET_TX_DADDR16L   14  // Low Byte of Zigbee 16bit addr
-#define ZB_FRM_OFFSET_TX_BRADIUS    15
-#define ZB_FRM_OFFSET_TX_OPTIONS    16
-#define ZB_FRM_OFFSET_TX_PAYLOAD    17
-#define ZB_FRM_OFFSET_TX_CHKSUM     (ZB_FRM_OFFSET_TX_PAYLOAD + ZB_TX_FRM_PAYLOAD_BYTES)
-
-
-uint8_t ZBfrmBufferTX[ZB_TX_FRM_BYTES];
-
-
-void initXmitAPIframe(void)
-{
-    myZBframeTX.ZBfrmDelimiter = ZB_START_DELIMITER;
-    myZBframeTX.ZBfrmLength    = ZB_TX_FRM_LEN; // buff of uint8_t lets us pick bytes at a time and save these byteswaps //BYTESWAP16( (uint16_t)ZB_TX_FRM_LEN ); //BYTESWAP16( (uint16_t)26 ); // ZB_TX_FRM_LEN
-    myZBframeTX.ZBfrmType      = ZB_FRAME_TYPE_TX_REQ;
-    myZBframeTX.ZBfrmID        = (uint8_t)1; // always use ID of 1
-    myZBframeTX.ZBdaddr64High  = ZB_64ADDR_BCAST_HIGH; //BYTESWAP32( ZB_64ADDR_BCAST_HIGH );
-    myZBframeTX.ZBdaddr64Low   = ZB_64ADDR_BCAST_LOW; //BYTESWAP32( ZB_64ADDR_BCAST_LOW );
-    myZBframeTX.ZBdaddr16      = ZB_16ADDR_BCAST; //BYTESWAP16( ZB_16ADDR_BCAST );
-    myZBframeTX.ZBfrmRadius    = ZB_BCAST_RADIUS;
-    myZBframeTX.ZBfrmOptions   = ZB_OPTIONS;
-}
-
-
-// Transmit a Zigbee API TX Request Frame
-// Each Zigbee message frame has a 12byte payload, the SmartHome Message,
-// so length=23=0x17 bytes, total frame=27bytes
-uint8_t zbXmitAPIframe(void)
-{
-    // initialize the Zigbee TX API frame checksum before calculating it
-    myZBframeTX.ZBfrmChksum = 0;
-
-    // Get data our of our Zigbee frame struct and into a buffer array of bytes/uint8_t 
-    // for Serial.write() call to Zbee module
-#if 0
-    Serial.print("In zbXmitAPIframe ; ZB_TX_FRM_BYTES=");
-    Serial.print(ZB_TX_FRM_BYTES, DEC);
-    Serial.print(" ; ZB_TX_FRM_LEN=");
-    Serial.print(ZB_TX_FRM_LEN, DEC);
-    Serial.println("");
-#endif
-
-    Serial.println("Starting a TX API frame now:");
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_DELMTR]       = myZBframeTX.ZBfrmDelimiter; //(uint8_t)0x7e;
-
-    uint8_t *ptrZBfrmLength = (uint8_t *)&(myZBframeTX.ZBfrmLength);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_LENH]         = ptrZBfrmLength[1]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_LENL]         = ptrZBfrmLength[0]; //(uint8_t)0x1a;
-
-    // START calculating ZB frame checksum, also the ZB "Frame Length" begins here
-    
-    ZBfrmBufferTX[ZB_FRM_OFFSET_FTYPE]        = myZBframeTX.ZBfrmType; //(uint8_t)0x10;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmType);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_FID]          = myZBframeTX.ZBfrmID; //(uint8_t)0x01;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmID);
-
-    // 64bit Zigbee addr
-    uint8_t *ptrZBdaddr64H = (uint8_t *)&(myZBframeTX.ZBdaddr64High);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B7] = ptrZBdaddr64H[3]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B6] = ptrZBdaddr64H[2]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B5] = ptrZBdaddr64H[1]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B4] = ptrZBdaddr64H[0]; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum32(myZBframeTX.ZBdaddr64High);
-
-    uint8_t *ptrZBdaddr64L = (uint8_t *)&(myZBframeTX.ZBdaddr64Low);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B3] = ptrZBdaddr64L[3]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B2] = ptrZBdaddr64L[2]; //(uint8_t)0x00;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B1] = ptrZBdaddr64L[1]; //(uint8_t)0xff;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR64B0] = ptrZBdaddr64L[0]; //(uint8_t)0xff;
-    myZBframeTX.ZBfrmChksum += calcChkSum32(myZBframeTX.ZBdaddr64Low);
-
-    // 16bit Zigbee addr
-    uint8_t *ptrZBdaddr16 = (uint8_t *)&(myZBframeTX.ZBdaddr16);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR16H] = ptrZBdaddr16[1]; //(uint8_t)0xff;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_DADDR16L] = ptrZBdaddr16[0]; //(uint8_t)0xfe;
-    myZBframeTX.ZBfrmChksum += calcChkSum16(myZBframeTX.ZBdaddr16);
-
-    // Zigbee Radius and Options bytes
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_BRADIUS] = myZBframeTX.ZBfrmRadius; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmRadius);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_OPTIONS] = myZBframeTX.ZBfrmOptions; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmOptions);
-
-
-    // SmartHome message payload bytes
-    uint8_t *ptrSHdestAddr16 = (uint8_t *)&(myZBframeTX.ZBfrmPayload.SHdestID);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_ID_DEST_H]  = ptrSHdestAddr16[1]; //(uint8_t)0xab;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_ID_DEST_L]  = ptrSHdestAddr16[0]; //(uint8_t)0xcd;
-    myZBframeTX.ZBfrmChksum += calcChkSum16(myZBframeTX.ZBfrmPayload.SHdestID);
-
-    uint8_t *ptrSHsrcAddr16 = (uint8_t *)&(myZBframeTX.ZBfrmPayload.SHsrcID);
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_ID_SRC_H]   = ptrSHsrcAddr16[1]; //(uint8_t)0xf0;
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_ID_SRC_L]   = ptrSHsrcAddr16[0]; //(uint8_t)0x0d;
-    myZBframeTX.ZBfrmChksum += calcChkSum16(myZBframeTX.ZBfrmPayload.SHsrcID);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_MSG_TYPE]   = myZBframeTX.ZBfrmPayload.SHmsgType; //(uint8_t)0x01;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHmsgType);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_CMD]        = myZBframeTX.ZBfrmPayload.SHcommand; //(uint8_t)0x01;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHcommand);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_STATUS_H]   = myZBframeTX.ZBfrmPayload.SHstatusH; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusH);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_STATUS_L]   = myZBframeTX.ZBfrmPayload.SHstatusL; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusL);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_STATUS_VAL] = myZBframeTX.ZBfrmPayload.SHstatusVal; //(uint8_t)0x00;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusVal);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_RESVD_1]    = myZBframeTX.ZBfrmPayload.SHreserved1; //(uint8_t)0x54;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHreserved1);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_RESVD_2]    = myZBframeTX.ZBfrmPayload.SHreserved2; //(uint8_t)0x58;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHreserved2);
-
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_PAYLOAD + SH_MSG_OFFSET_CHKSUM]     = myZBframeTX.ZBfrmPayload.SHpayldChksum; //(uint8_t)0xdc;
-    myZBframeTX.ZBfrmChksum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHpayldChksum);
-
-
-    // STOP calculating ZB frame checksum, also ZB "Frame Length" ends here
-    myZBframeTX.ZBfrmChksum= (uint8_t)0xff -  myZBframeTX.ZBfrmChksum;
-     
-    // Zigbee Frame Checksum
-    ZBfrmBufferTX[ZB_FRM_OFFSET_TX_CHKSUM] = myZBframeTX.ZBfrmChksum; //(uint8_t)0xf4; //myZBframeTX.ZBfrmChksum;
-
-    Serial.write(ZBfrmBufferTX, ZB_TX_FRM_BYTES);
-
-    uint8_t i=0;
-
-    Serial.println("");
-    for(i-0; i<ZB_TX_FRM_BYTES; i++)
-    {
-        Serial.print( ZBfrmBufferTX[i], HEX );
-        Serial.print(" ");
-    }
-    Serial.println("");
-    
-
-    Serial.println("");
-    Serial.print("Finished sending TXframe");
-}
-
-
-uint8_t  calcChkSum8(uint8_t ui8)
-{
-    Serial.print(ui8, HEX);
-    Serial.print(" ");
-    return(ui8);
-}
-
-uint8_t  calcChkSum16(uint16_t ui16)
-{
-    uint8_t *ptrUI8AsUi16 = (uint8_t *)&ui16;
-    uint8_t tmpChkSum = 0;
-
-    tmpChkSum += ptrUI8AsUi16[1];
-    Serial.print(ptrUI8AsUi16[1], HEX);
-    Serial.print(" ");
-    tmpChkSum += ptrUI8AsUi16[0];
-    Serial.print(ptrUI8AsUi16[0], HEX);
-    Serial.print(" ");
-
-    return(tmpChkSum);
-}
-
-uint8_t  calcChkSum32(uint32_t ui32)
-{
-    uint8_t *ptrUI8AsUi32 = (uint8_t *)&ui32;
-    uint8_t tmpChkSum = 0;
-
-    tmpChkSum += ptrUI8AsUi32[3];
-    Serial.print(ptrUI8AsUi32[3], HEX);
-    Serial.print(" ");
-    tmpChkSum += ptrUI8AsUi32[2];
-    Serial.print(ptrUI8AsUi32[2], HEX);
-    Serial.print(" ");
-    tmpChkSum += ptrUI8AsUi32[1];
-    Serial.print(ptrUI8AsUi32[1], HEX);
-    Serial.print(" ");
-    tmpChkSum += ptrUI8AsUi32[0];
-    Serial.print(ptrUI8AsUi32[0], HEX);
-    Serial.print(" ");
-
-    return(tmpChkSum);
-}
-
-//void DEBUGprintTXfrmChkSum(uint8_t chkSum)
-void DEBUGprintTXfrmChkSum(void)
-{
-    #if 1
-    Serial.print("<cs=");
-    //Serial.println(chkSum);
-    Serial.print(myZBframeTX.ZBfrmChksum, HEX);
-    Serial.print("> ");
-    #endif
-}
-
-
-// Prepare the TX frame message payload to be sent
-void prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
-                   uint16_t prepSHsrcID,      // Source ID
-                   uint8_t  prepSHmsgType,    // Msg Type
-                   uint8_t  prepSHcommand,    // CMD
-                   uint8_t  prepSHstatusH,
-                   uint8_t  prepSHstatusL,
-                   uint8_t  prepSHstatusVal
-                 )
-{
-    uint8_t tmpChkSum = 0;
-    
-    myZBframeTX.ZBfrmPayload.SHpayldChksum= 0;
-    
-    // ints are 16bit Little Endian, longs are 32bit Little Endian
-    // Zigbee goes Big Endian
-    myZBframeTX.ZBfrmPayload.SHdestID    = prepSHdestID; //BYTESWAP16(prepSHdestID);
-    tmpChkSum += calcChkSum16(myZBframeTX.ZBfrmPayload.SHdestID);
-    
-    myZBframeTX.ZBfrmPayload.SHsrcID     = prepSHsrcID; //BYTESWAP16(prepSHsrcID);
-    tmpChkSum += calcChkSum16(myZBframeTX.ZBfrmPayload.SHsrcID);
-
-    myZBframeTX.ZBfrmPayload.SHmsgType   = prepSHmsgType;
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHmsgType);
-
-    myZBframeTX.ZBfrmPayload.SHcommand   = prepSHcommand;
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHcommand);
-
-    myZBframeTX.ZBfrmPayload.SHstatusH   = prepSHstatusH;
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusH);
-
-    myZBframeTX.ZBfrmPayload.SHstatusL   = prepSHstatusL;
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusL);
-
-    myZBframeTX.ZBfrmPayload.SHstatusVal = prepSHstatusVal;
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHstatusVal);
-
-    myZBframeTX.ZBfrmPayload.SHreserved1 = (uint8_t)'T';
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHreserved1);
-
-    myZBframeTX.ZBfrmPayload.SHreserved2 = (uint8_t)'X';
-    tmpChkSum += calcChkSum8(myZBframeTX.ZBfrmPayload.SHreserved2);
-
-    // finish calc payload message checksum
-    tmpChkSum = (uint8_t)0xff - tmpChkSum;
-    myZBframeTX.ZBfrmPayload.SHpayldChksum  = tmpChkSum;
-
-    #if 1
-    Serial.print("<mcs=");
-    Serial.print(myZBframeTX.ZBfrmPayload.SHpayldChksum, HEX);
-    Serial.print("> ");
-    #endif
-}
 
 
 
