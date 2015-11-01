@@ -6,6 +6,7 @@
 #include "SmartHome_Zigbee.h"
 
 
+// constructor
 SHzigbee::SHzigbee()
 {
 	initXmitAPIframe();
@@ -265,3 +266,114 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
 }
 
 
+
+
+#if 0
+// received frame length value should match ZB_RX_FRM_BYTES
+uint8_t iSHzigbee::zbRcvAPIframe(void)
+{
+  uint8_t ZB_frm_byte = 0; // byte received in uart RX by Serial.read
+  uint8_t ZBchksumFromSender = 0;
+
+  while (Serial.available() > 0)
+  {
+    // Read a byte from uart RX buffer
+    ZB_frm_byte = Serial.read();
+
+    if ((ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIMITER))
+    {
+      // beginning a new frame
+      ZBinFrameRX = ZB_IN_FRAME_YES;
+      ZBoffsetRXbuff = 0; //Delimiter byte is offset 0 into RX buffer
+      ZBfrmRXchksumCalc = 0; //new frame starts new checksum
+    }
+    else if (ZBinFrameRX == ZB_IN_FRAME_NO) // and new byte, which is NOT ZB_START_DELIMITER
+    {
+      // NOT already in a frame, and NOT starting a new frame here, ignore unknown bytes in RX
+      return (0);
+    }
+    //else // already in a frame
+    else if (ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_CHKSUM)
+    {
+      //put received byte into rx buffer (aka received Zigbee frame structure)
+      rxBuffer[ZBoffsetRXbuff] = ZB_frm_byte;
+      ZBchksumFromSender = ZB_frm_byte;
+
+      //final checksum is ff - the sum of bytes 3 to N-1 (excludes the received checksum value)
+      ZBfrmRXchksumCalc = 0xff - ZBfrmRXchksumCalc;
+
+#if 0
+      Serial.print(" rx<");
+      Serial.print(ZB_frm_byte, HEX);
+      Serial.print("> cs<");
+      Serial.print(ZBfrmRXchksumCalc, HEX);
+      Serial.print("> ");
+#endif
+
+
+#if 0
+      Serial.println("");
+      Serial.print(" <ZBfrmLengthRX=");
+      Serial.print(ZBfrmLengthRX, HEX);
+      Serial.print(" ?= ZB_RX_FRM_LEN=");
+      Serial.print(ZB_RX_FRM_LEN, HEX);
+      Serial.print(" || ZBchksumFromSender=");
+      Serial.print(ZBchksumFromSender, HEX);
+      Serial.print(" ?= ZBfrmRXchksumCalc=");
+      Serial.print(ZBfrmRXchksumCalc, HEX);
+      Serial.print(" -||- myZBframeRX.ZBfrmLength=");
+      Serial.print(myZBframeRX.ZBfrmLength, HEX);
+      Serial.println("> ");
+#endif
+
+      // check frame length and checksum are correct for this ZB frame
+      if ( (ZBfrmLengthRX == ZB_RX_FRM_LEN) &&
+           (ZBchksumFromSender == ZBfrmRXchksumCalc) )
+      {
+        //Serial.print(" <Ding1> ");
+        // Have a valid Zigbee frame of our expected length, assume it is valid SH message
+
+        // pull out our SmartHome data items into global vars
+        extractRXpayload();
+
+        // let rest of program know that a new RX message is waiting to be processed
+        newSHmsgRX = YES;
+      }
+
+      // end of frame, next byte received is NOT part of this same frame
+      ZBinFrameRX = ZB_IN_FRAME_NO;
+      return (0);
+    }
+
+
+    if (ZBinFrameRX == ZB_IN_FRAME_YES)
+    {
+      //put received byte into rx buffer (aka received Zigbee frame structure)
+      rxBuffer[ZBoffsetRXbuff] = ZB_frm_byte;
+
+      if (ZBoffsetRXbuff == ZB_FRM_OFFSET_LENL)
+      {
+        // have all bytes of the Zigbee Frame Length field, put this into a uint16_t variable
+        ZBfrmLengthRX = BYTESWAP16(myZBframeRX.ZBfrmLength);
+      }
+      else if ((ZBoffsetRXbuff >= ZB_FRM_OFFSET_FTYPE) && (ZBoffsetRXbuff < ZB_FRM_OFFSET_RX_CHKSUM))
+      {
+        // add to the checksum for this frame
+        ZBfrmRXchksumCalc += ZB_frm_byte;
+      }
+
+#if 0
+      Serial.print(" rx<");
+      Serial.print(ZB_frm_byte, HEX);
+      Serial.print("> cs<");
+      Serial.print(ZBfrmRXchksumCalc, HEX);
+      Serial.print("> ");
+#endif
+
+      //increment offset for next byte received in this frame (AFTER checking if should add to checksum)
+      ZBoffsetRXbuff++ ;
+    }
+  }
+}
+
+#endif

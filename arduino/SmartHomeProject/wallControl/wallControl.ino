@@ -47,6 +47,16 @@ Sd2Card card;
 SdVolume volume;
 SdFile root;
 
+// SD dir struct
+// R  (numerical direcotry name representing an unsigned 16bit int number, room number)
+//    L.BIN (numerical filename with .BIN extension represeiting the controllable loads in that room
+// number of rooms is determined by dir names of each room number onthe SD card
+// each wall controller will dor a dir search to figure that out
+// default room is room # 0
+uint16_t currentRoomNum = 0;
+uint16_t lastRoomNum = 0; // to be updated in setup() bsaed on what is found in SD card
+uint8_t currentLoadNumInRoom = 0;
+uint8_t lastLoadNumInRoom = 0;
 
 // change this to match your SD shield or module;
 const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
@@ -55,7 +65,8 @@ const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
 
 
 //#define SH_WALLCONTROL_LCD_BACKDROP_FILE "/IMAGES/BACKDROP.BMP"
-#define SH_WALLCONTROL_LCD_BACKDROP_FILE "/IMAGES/BD24.BMP"
+//#define SH_WALLCONTROL_LCD_BACKDROP_FILE "/IMAGES/BD24.BMP"
+#define SH_WALLCONTROL_LCD_BACKDROP_FILE "/BCKDRP24.BMP"
 #define SH_WALLCONTROL_LCD_BACKDROP_X (uint16_t)240
 #define SH_WALLCONTROL_LCD_BACKDROP_Y (uint16_t)320
 
@@ -73,6 +84,7 @@ void setup() {
     uint8_t tmpR8 = 0;
     
     Serial.begin(9600);
+
   
     tft.begin();
     tft.fillScreen(ILI9341_BLACK);
@@ -86,17 +98,109 @@ void setup() {
         Serial.println("Touchscreen started."); 
         ts.writeRegister8(STMPE_INT_STA, 0xFF); // reset all ints
     }
+
   
     Serial.print("Initializing SD card...");
     if (!SD.begin(SD_CS)) {
         Serial.println("failed!");
     }
-    Serial.println("OK!");
-      
-    //bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, SH_WALLCONTROL_LCD_BACKDROP_X, SH_WALLCONTROL_LCD_BACKDROP_Y);
-//    bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);   
+    else
+    {
+        Serial.println("OK!");
+        
+        currentRoomNum = 0;
+        currentLoadNumInRoom = 0;
+        //getThisNodeID();
+        #define myIDfilename "/ME.BIN"
+        if( SD.exists(myIDfilename) )
+        {
+            uint16_t thisNodeID = 0;
+            uint8_t *ptrThisNodeID = (uint8_t *)&thisNodeID;
+            File myIDfile = SD.open(myIDfilename, FILE_READ);
+            if( myIDfile.available() )
+            {
+                ptrThisNodeID[1] = (uint8_t)myIDfile.read();
+            }
+            if( myIDfile.available() )
+            {
+                ptrThisNodeID[0] = (uint8_t)myIDfile.read();
+            }
+            myIDfile.close();
+            Serial.print("SmartHome Node ID for this control unit = ");
+            Serial.println(thisNodeID, HEX);
+        }
 
-#if 1
+// /65536/245.BIN$
+        char roomNumDirName[7] = "0";
+        char loadNumFileName[16] = "/1/2.BIN";
+
+        volatile uint32_t tmpRoomNum = 0;
+            volatile uint32_t tmpLoadNum = 0;
+        sprintf(roomNumDirName, "/%d", tmpRoomNum);
+        while( (tmpRoomNum <= 65535) && SD.exists(roomNumDirName) )
+        {
+            Serial.print("Checking SD for ");
+            Serial.println(roomNumDirName);
+
+            lastRoomNum = tmpRoomNum;
+            Serial.print("Found Room # ");
+            Serial.println(tmpRoomNum, DEC);
+#if 0
+            tmpLoadNum = 3;
+            sprintf(loadNumFileName, "/%d/%d.BIN", tmpRoomNum, tmpLoadNum);
+            while( (tmpLoadNum <= 255) && SD.exists(loadNumFileName) )
+            {
+                Serial.print("    Checking SD for ");
+                Serial.println(loadNumFileName);
+                lastLoadNumInRoom = tmpLoadNum;
+                
+                Serial.print("    Found Load # ");
+                Serial.println(tmpLoadNum, DEC);
+                char tmpStr[30];
+                sprintf(tmpStr, "testing ints %d %d", 3, 7);
+                Serial.println(tmpStr);
+                
+                tmpLoadNum = tmpLoadNum + 1;
+//                sprintf(loadNumFileName, "/%d/%d.BIN", tmpRoomNum, ++tmpLoadNum);
+                sprintf(loadNumFileName, "/%i/%i.BIN", tmpRoomNum, 7);
+                Serial.print("    Load filename for load # ");
+                Serial.print(tmpLoadNum, DEC);
+                Serial.print(" is ");
+                Serial.println(loadNumFileName);
+            }
+#endif            
+            tmpRoomNum += 1;
+            sprintf(roomNumDirName, "/%d", tmpRoomNum);
+        }        
+
+//        lastRoomNum = 0;
+//        lastLoadNumInRoom = 0;
+
+        Serial.print("Current Room = ");
+        Serial.print(currentRoomNum, DEC);
+        Serial.print(" ; Last Room = ");
+        Serial.print(lastRoomNum, DEC);
+        Serial.print(" ; Current Load = ");
+        Serial.print(currentLoadNumInRoom, DEC);
+        Serial.print(" ; Last Load = ");
+        Serial.print(lastLoadNumInRoom, DEC);
+        Serial.println("");
+    }
+
+     
+    //bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, SH_WALLCONTROL_LCD_BACKDROP_X, SH_WALLCONTROL_LCD_BACKDROP_Y);
+    bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);   
+    lcdDrawRoomBtn(0);
+    lcdDrawLoadBtn(0, 0);
+    lcdDrawLvlIndBar();
+    lcdDrawLvlIndicator(5);
+    lcdDrawLvlIndicator(4);
+    lcdDrawLvlIndicator(3);
+    lcdDrawLvlIndicator(2);
+    lcdDrawLvlIndicator(1);
+    lcdDrawLvlIndicator(0);
+    
+#if 0
     // Attempt to transmit a TX frame for debugging
 //    mySHzigbee.initXmitAPIframe();
 
@@ -116,6 +220,7 @@ void setup() {
     Serial.println("");
     Serial.println("");
 #endif
+    Serial.println("Exiting setup()");
 }
 
 
@@ -168,7 +273,7 @@ void loop() {
             x = p.x;
             y = p.y;
 
-#if 0
+#if 1
             Serial.print("Have Touch at x=");
             Serial.print(x, DEC);
             Serial.print(" ; y=");
@@ -197,67 +302,129 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 {
     Serial.print("Touch Button ");  
 
+
+// FAV 45:55   ; 125:107
+// INC 45:10   ; 125:45
+// DEC 45:125  ; 125:160
+// ON  140:10  ; 230:70
+// OFF 140:100 ; 230:160
+
+
     // The X and Y coordinates checked here were measured with the intended wall-switch background image displayed, and touching the touchscreen with a stylus
     // and noting the coordinate numbers coming out of the "TouchTest" Example program included with the touch-sensor driver library for this panel.
-    if( x>=20 && x<100)
+    if( x>=140 && x<230)
     {
-        if(y>10 && y<70)
+            if(y>10 && y<70)  // ON button
         {
-            Serial.print("ON");             
+            Serial.println("ON");             
+
+            // Fill TX frame payload (SH message) with current message values
+            mySHzigbee.prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
+                                     (uint16_t)0xf00d,    // SH src ID
+                                     SH_MSG_TYPE_CMD_REQ, // SH msg Type
+                                     SH_CMD_LOAD_ON,      // SH command
+                                     (uint8_t)0x00,       // SH statusH
+                                     (uint8_t)0x00,       // SH statusL
+                                     (uint8_t)0x00        // SH statusVal
+                                   );
+
+//            doNodeIDmsgSM(currLoadNodeInfo);
+                        
+            // DEV remove - send our prepared ZB TX frame out uart to Xbee module for Zigbee transmit
+            mySHzigbee.zbXmitAPIframe();
         }
-        else if(y>100 && y<160)
+        else if(y>100 && y<160)  // OFF button
         {
-            Serial.print("OFF"); 
+            Serial.println("OFF"); 
+
+            // Fill TX frame payload (SH message) with current message values
+            mySHzigbee.prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
+                                     (uint16_t)0xf00d,    // SH src ID
+                                     SH_MSG_TYPE_CMD_REQ, // SH msg Type
+                                     SH_CMD_LOAD_OFF,     // SH command
+                                     (uint8_t)0x00,       // SH statusH
+                                     (uint8_t)0x00,       // SH statusL
+                                     (uint8_t)0x00        // SH statusVal
+                                   );
+
+//            doNodeIDmsgSM(currLoadNodeInfo);
+                       
+            // DEV remove - send our prepared ZB TX frame out uart to Xbee module for Zigbee transmit
+            mySHzigbee.zbXmitAPIframe();
         }
-        else if(y>180 && y<220)
+        if(y>180 && y<220)  // Room -> button (select next Room)
         {
-            Serial.print("Room <-"); 
+            Serial.println("Room ->"); 
         }
-        else if(y>240 && y<290)
+        else if(y>240 && y<290)  // Load -> button (select next Load)
         {
-            Serial.print("Load <-"); 
-        }
-        else
-        {
-            printInvalidCood(x, y);
+            Serial.println("Load ->"); 
         }
     }
-    else if( x>=150 && x<230)
+    else if( (x>=10 && x<100) && (y>180 && y<220) )  // Room <- button (select previous Room)
     {
-        if(y>10 && y<45)
-        {
-            Serial.print("Increase");             
-        }
-        else if(y>60 && y<110)
-        {
-            Serial.print("FAV"); 
-        }
-        else if(y>125 && y<160)
-        {
-            Serial.print("Decrease"); 
-        }
-        else if(y>180 && y<220)
-        {
-            Serial.print("Room ->"); 
-        }
-        else if(y>240 && y<290)
-        {
-            Serial.print("Load ->"); 
-        }
-        else
-        {
-            printInvalidCood(x, y);
-        }
+            Serial.println("Room <-"); 
     }
+    else if( (x>=10 && x<100) && (y>240 && y<290) )  // Load <- button (select previous Load)
+    {
+            Serial.println("Load <-"); 
+    }
+    else if( x>=45 && x<125) 
+    {
+        if(y>10 && y<45)  // Up-Arrow button (increase load intensity)
+        {
+            Serial.println("Increase");             
+
+            // Fill TX frame payload (SH message) with current message values
+            mySHzigbee.prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
+                                     (uint16_t)0xf00d,    // SH src ID
+                                     SH_MSG_TYPE_CMD_REQ, // SH msg Type
+                                     SH_CMD_LOAD_INC,     // SH command
+                                     (uint8_t)0x00,       // SH statusH
+                                     (uint8_t)0x00,       // SH statusL
+                                     (uint8_t)0x00        // SH statusVal
+                                   );
+
+//            doNodeIDmsgSM(currLoadNodeInfo);
+            
+            // DEV remove - send our prepared ZB TX frame out uart to Xbee module for Zigbee transmit
+            mySHzigbee.zbXmitAPIframe();
+        }
+        else if(y>60 && y<110)  // FAV button (favorite intensity value for this load)
+        {
+            Serial.println("FAV"); 
+        }
+        else if(y>125 && y<160)  // Down-Arrow button (decrease load intensity)
+        {
+            Serial.println("Decrease"); 
+
+            // Fill TX frame payload (SH message) with current message values
+            mySHzigbee.prepareTXmsg( (uint16_t)0xabcd,    // SH dest ID
+                                     (uint16_t)0xf00d,    // SH src ID
+                                     SH_MSG_TYPE_CMD_REQ, // SH msg Type
+                                     SH_CMD_LOAD_DEC,     // SH command
+                                     (uint8_t)0x00,       // SH statusH
+                                     (uint8_t)0x00,       // SH statusL
+                                     (uint8_t)0x00        // SH statusVal
+                                   );
+
+//            doNodeIDmsgSM(currLoadNodeInfo);
+            
+            // DEV remove - send our prepared ZB TX frame out uart to Xbee module for Zigbee transmit
+            mySHzigbee.zbXmitAPIframe();
+        }
+    }    
     else
     {
-        printInvalidCood(x, y);
+        printInvalidCoord(x, y);
     }
 
     Serial.println("");
 }
 
-void printInvalidCood(uint16_t x, uint16_t y)
+
+// print to serial monitor the invalid LCD touchscreen button coordinate
+void printInvalidCoord(uint16_t x, uint16_t y)
 {
     Serial.print("INVALID coordinate (no button at) ");
     Serial.print(x, DEC);
@@ -266,6 +433,115 @@ void printInvalidCood(uint16_t x, uint16_t y)
 }
 
 
+void lcdDrawLvlIndBar(void)
+{
+    #define FILENAME_LVL_IND_BAR "/INDBAR.BMP"
+    Serial.print("Drawing Indicator Bar");
+    Serial.print(" using filename ");
+    Serial.println(FILENAME_LVL_IND_BAR);
+//    bmpDraw(FILENAME_LVL_IND_BAR, 118, 12, 240, 320);
+    bmpDraw(FILENAME_LVL_IND_BAR, 0, 12, 240, 320);
+}
+
+void lcdDrawLvlIndicator(uint8_t myLevel)
+{
+    // Redraw the Level indicator bar to clear out the current/previous level drawing position
+    //lcdDrawLvlIndBar();
+    
+    #define FILENAME_LVL_IND "/LVLIND.BMP"
+    Serial.print("Drawing Indicator Bar");
+    Serial.print(" using filename ");
+    Serial.println(FILENAME_LVL_IND);
+
+    switch(myLevel)
+    {
+        case (uint8_t)5: // Full ON
+            bmpDraw(FILENAME_LVL_IND, 0, 17, 240, 320); //15
+            break;
+
+        case (uint8_t)4: 
+            bmpDraw(FILENAME_LVL_IND, 0, 44, 240, 320); // 15+18
+            break;
+
+        case (uint8_t)3: 
+            bmpDraw(FILENAME_LVL_IND, 0, 70, 240, 320);
+            break;
+
+        case (uint8_t)2: 
+            bmpDraw(FILENAME_LVL_IND, 0, 96, 240, 320);
+            break;
+
+        case (uint8_t)1: 
+            bmpDraw(FILENAME_LVL_IND, 0, 123, 240, 320);
+            break;
+
+        case (uint8_t)0: // Full OFF
+            bmpDraw(FILENAME_LVL_IND, 0, 150, 240, 320); // 168 - height of level indicator (29)
+            break;
+
+        default:
+            // Do nothing
+            break;
+    }        
+}
+
+
+void lcdDrawRoomBtn(uint16_t roomNum)
+{
+    char btnFileName[9];
+
+    sprintf(btnFileName, "/%d/R.BMP", roomNum);
+
+    Serial.print("Drawing Button graphic for room ");
+    Serial.print(roomNum, DEC);
+    Serial.print(" using filename ");
+    Serial.println(btnFileName);
+    
+    bmpDraw(btnFileName, 0, 191, 240, 320);
+}
+
+// /65536/255.bmp$
+void lcdDrawLoadBtn(uint16_t roomNum, uint8_t loadNum)
+{
+    char btnFileName[16];
+
+    sprintf(btnFileName, "/%d/%d.BMP", roomNum, loadNum);
+
+    Serial.print("Drawing Button graphic for room ");
+    Serial.print(roomNum, DEC);
+    Serial.print(" using filename ");
+    Serial.println(btnFileName);
+    
+    bmpDraw(btnFileName, 0, 256, 240, 320);
+}
+
+
+
+
+
+
+
+#define USE_BMP_DRAW
+#ifdef USE_BMP_DRAW
+// This ifdef block is used to indicate the bounds of the bmpDraw code
+// used from the spitftbitmap example program as provided with the
+// Adafruit IL9341 driver library for their V2 2.8inch LCD/TFT touchscreen Arduino shield
+
+/***************************************************
+  This is our Bitmap drawing example for the Adafruit ILI9341 Breakout and Shield
+  ----> http://www.adafruit.com/products/1651
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+ 
 // This function opens a Windows Bitmap (BMP) file and
 // displays it at the given coordinates.  It's sped up
 // by reading many pixels worth of data at a time
@@ -273,6 +549,15 @@ void printInvalidCood(uint16_t x, uint16_t y)
 // size takes more of the Arduino's precious RAM but
 // makes loading a little faster.  20 pixels seems a
 // good balance.
+
+// Bill Toner modified this to rename x and y to x1 and y1 and then add tftW and tftH
+// parameters. The x1 and y1 renames are probably not necessary after realizing that
+// what I tried to do for x2 and y2 didn't work, and renamed tose to tftW and tftH
+// and better code based on those works better.
+
+// This "library" function does NOT work well if x1 != 0, so I redrew my 
+// initial graphics to rearange buttons on screen, so that the level indicator
+// can now be drawn at left side, to get x1=0, so that redrawign that works OK.
 
 #define BUFFPIXEL 20
 
@@ -411,6 +696,6 @@ uint32_t read32(File &f) {
   return result;
 }
 
-
+#endif // USE_BMP_DRAW
 
 
