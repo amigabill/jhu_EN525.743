@@ -13,7 +13,8 @@ SHzigbee::SHzigbee()
 }
 
 
-// Initialize the TX API frame with values we will use as staandard
+
+// Initialize the TX API frame with values we will use as standard
 void SHzigbee::initXmitAPIframe(void)
 {
     _myZBframeTX.ZBfrmDelimiter = ZB_START_DELIMITER;
@@ -149,7 +150,7 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
 #endif    
 
     Serial.println("");
-    Serial.print("Finished sending TXframe");
+    Serial.println("Finished sending TXframe");
 }
 
 
@@ -263,6 +264,12 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
     Serial.print(_myZBframeTX.ZBfrmPayload.SHpayldChksum, HEX);
     Serial.print("> ");
     #endif
+}
+
+
+uint8_t SHzigbee::getMsgTypeTX(void)
+{
+    return( _myZBframeTX.ZBfrmPayload.SHmsgType);
 }
 
 

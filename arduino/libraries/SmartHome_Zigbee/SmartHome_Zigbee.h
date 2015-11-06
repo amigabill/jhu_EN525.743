@@ -5,6 +5,13 @@
 #include "stdint.h"
 
 
+// For DEBUG only, Load and Wall Control IDs (SmartHome IDs)
+#define SH_LOAD_ID_ROOM0_LOAD0 (uint16_t)0x0709
+#define SH_LOAD_ID_ROOM0_LOAD1 (uint16_t)0x0a0c
+#define SH_WC_ID_ROOM0 (uint16_t)0x0123
+
+
+
 typedef struct
 {
     volatile uint16_t SHothrID;
@@ -12,14 +19,14 @@ typedef struct
     volatile uint8_t  SHcommand;
     volatile uint8_t  SHstatusH;
     volatile uint8_t  SHstatusL;
-    volatile uint16_t SHstatusID; // 16bit alternative to SHstatusH and SHstatusL but represents same bytes in message
+    volatile uint16_t SHstatusID;    // 16bit alternative to SHstatusH and SHstatusL but represents same bytes in message
     volatile uint8_t  SHstatusVal;
     volatile uint8_t  SHreserved1;
     volatile uint8_t  SHreserved2;
-    volatile uint8_t  SHchksum;     // form this node or defined by another node
-    volatile uint8_t  SHcalcChksum; // checksum calculated for comparison to sender's value
-    volatile uint8_t  SHstatusTX;  // status of attempt to transmit a Zigbee API frame
-    volatile uint8_t  SHstatusRX;  // status of receiving a Zigbee API frame
+    volatile uint8_t  SHchksum;      // from this node or defined by another node
+    volatile uint8_t  SHcalcChksum;  // checksum calculated for comparison to sender's value
+    volatile uint8_t  SHstatusTX;    // status of attempt to transmit a Zigbee API frame
+    volatile uint8_t  SHstatusRX;    // status of receiving a Zigbee API frame
 } SHmessage, *prtSHmessage;
 
 
@@ -63,11 +70,19 @@ typedef struct
 #define SH_CMD_LOAD_OFF          (uint8_t)0x02 // Turn off the target load at this node
 #define SH_CMD_LOAD_INC          (uint8_t)0x03 // increase intensity at target load (brighter/faster)
 #define SH_CMD_LOAD_DEC          (uint8_t)0x04 // decrease intensity at target load (dimmer/slower)
-#define SH_CMD_LOAD_SETFAV       (uint8_t)0x05 // Set user favorite intensity at target load (brightness/speed)
+//#define SH_CMD_LOAD_SETFAV       (uint8_t)0x05 // Set user favorite intensity at target load (brightness/speed)
+#define SH_CMD_LOAD_GOTOFAV      (uint8_t)0x05 // Set load current intensity to user favorite at target load (brightness/speed)
 #define SH_CMD_LOAD_SAVEFAV      (uint8_t)0x06 // save current intensity as target load user favorite level (brightness/speed)
 #define SH_CMD_LOAD_READFAV      (uint8_t)0x07 // read the saved favorite intensity at target load and xmit back to another node (brightness/speed))
 #define SH_CMD_LOAD_READCRNT     (uint8_t)0x08 // read the current active intensity at target load (brightness/speed)
+#define SH_CMD_LOAD_READPWR      (uint8_t)0x09 // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
+#define SH_CMD_LOAD_TOGLPWR      (uint8_t)0x0a // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
 #define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // decrease intensity at target load (dimmer/slower)
+
+#define SH_POWERED_OFF (uint8_t)0x00
+#define SH_POWERED_ON  (uint8_t)0x01
+
+
 
 
 //#define SH_RESERVED_BYTE 0x00
@@ -223,9 +238,6 @@ typedef struct
 
 
 
-
-	
-
 class SHzigbee
 {
     public:
@@ -244,6 +256,10 @@ class SHzigbee
                    uint8_t  prepSHstatusL,    // Status/StatusID Low byte
                    uint8_t  prepSHstatusVal   // Status value (8bit)
 		);                 
+
+	// read back the current value of this TX message type (of SmartHome Message types)
+        uint8_t getMsgTypeTX(void);
+	
     private:
         ZBframeTX     _myZBframeTX; //A Zigbee TX REQ type API frame struct instance to work with
         ////prtZBframeTX  ptrMyZBframeTX = &_myZBframeTX;
