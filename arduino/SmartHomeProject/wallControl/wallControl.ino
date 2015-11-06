@@ -13,16 +13,15 @@
 // include the SD library:
 #include <SD.h>
 
+
 ////#include "SmartHome_Zigbee.h"
 #include <SmartHome_Zigbee.h>
 SHzigbee mySHzigbee = SHzigbee();
 
+
 #include <SmartHome_NodeInfo.h>
 SHnodeInfo thisWCnodeInfo;
 SHnodeInfo curLoadNodeInfo;
-
-
-//#include <ByteSwap.h>
 
 
 // This is calibration data for the raw touch data to the screen coordinates
@@ -41,6 +40,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 // If using the breakout, change pins as desired
 //Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
 
+
 // The STMPE610 uses hardware SPI on the shield, and #8
 #define STMPE_CS 8
 Adafruit_STMPE610 ts = Adafruit_STMPE610(STMPE_CS);
@@ -48,6 +48,9 @@ Adafruit_STMPE610 ts = Adafruit_STMPE610(STMPE_CS);
 
 // set up variables using the SD utility library functions:
 #define SD_CS 4
+// change this to match your SD shield or module;
+const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
+
 Sd2Card card;
 SdVolume volume;
 SdFile root;
@@ -65,10 +68,8 @@ uint16_t curNumLoadsInRoom= 0;
 uint8_t lastLoadNumInRoom = 0;
 
 
-// change this to match your SD shield or module;
-const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
-
 //#include "SpiTFTbitmap.h"  // TODO - try to move bmpDraw function stuff into an external library at some point
+
 
 #define SH_WALLCONTROL_LCD_BACKDROP_X (uint16_t)240
 #define SH_WALLCONTROL_LCD_BACKDROP_Y (uint16_t)320
@@ -92,12 +93,12 @@ const int chipSelect = 4; // for Adafruit 2.8" LCD Resistive Touchscreen
 #define ROOM_NO_LOADS (uint16_t)0xffff
 
 
-
 // SmartHome Node ID for this Wall Control unit
 uint16_t thisWCnodeID = 0;
 uint8_t *ptrThisWCnodeID = (uint8_t *)&thisWCnodeID;
 
 
+// Initialize this software program before running the main loop
 void setup() {
     // put your setup code here, to run once:
     uint8_t tmpR8 = 0;
@@ -224,7 +225,7 @@ uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
     
     // Get last load number for the default room
     sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, tmpLoadNum);
-//    sprintf(loadNumFileName, "/%d/%d.BIN", DEFAULT_ROOM_NUM, tmpLoadNum);  // initial line for debugging
+
     while( (tmpLoadNum <= 255) && SD.exists(loadNumFileName) )
     {
         Serial.print("    getNumLoadsInRoomFromSD - Found filename ");
@@ -238,7 +239,6 @@ uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
         lastLoadNumInRoom = tmpLoadNum;
         tmpLoadNum += 1;            
         sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, tmpLoadNum);
-//        sprintf(loadNumFileName, "/%d/%d.BIN", DEFAULT_ROOM_NUM, tmpLoadNum);  // initial line for debugging
     }
 
     Serial.print("    getNumLoadsInRoomFromSD - Did NOT find filename ");
@@ -282,8 +282,6 @@ uint16_t getThisWCnodeIDfromSD(void)
         Serial.println(tmpWCloadID, HEX);
     }
 
-//    thisWCnodeID = tmpWCloadID;
-
     //return(thisWCnodeID)
     return(tmpWCloadID);
 }
@@ -319,7 +317,6 @@ uint16_t getLoadNodeIDfromSD(uint16_t roomNum, uint8_t loadNum)
 
 
 // Get SmartHome Load Type value for this Wall Control unit from SD card
-// 0 = goober
 uint16_t getLoadTypefromSD(uint16_t roomNum, uint8_t loadNum)
 {
     uint8_t tmpLoadType = NODEINFO_NODETYPE_LIGHT; //loads are not controls, and more loads will be lights than fans
@@ -463,7 +460,9 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
     // ON  140:10  ; 230:70
     // OFF 140:100 ; 230:160
 
-    #define NUM_CMD_REPEATS_SAVE_FAV 4
+    #define NUM_CMD_REPEATS_SAVE_FAV 2
+    #define FAKE_FAV_VALUE_DEBUG 4
+    
 
     // save current load ID and SH command for comparison next time through to detect repeats
     prevLoadID  = curLoadID;
@@ -477,15 +476,15 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         {
             Serial.println("ON");             
 
-                        curLoadNodeInfo.SHthisNodeIsPowered = curLoadNodeInfo.SHthisNodeMsg.SHstatusL;
-                        curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+            curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
+            curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
             // Fill TX frame payload (SH message) with current message values
             curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
             curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
             curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_ON;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_ON;
+            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
             curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
@@ -502,6 +501,9 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         else if(y>100 && y<160)  // OFF button
         {
             Serial.println("OFF"); 
+
+            curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_OFF;
+            curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
             // Fill TX frame payload (SH message) with current message values
             curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
@@ -549,17 +551,18 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         {
             Serial.println("Increase");             
 
-            if( 5 > (curLoadNodeInfo.SHthisNodeLevelCurrent - 1) )
+            if( 5 > (curLoadNodeInfo.SHthisNodeLevelCurrent) )
             {
                 // increment the current intensitylevel value
                 curLoadNodeInfo.SHthisNodeLevelCurrent += 1;
+                curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
 
                 // Fill TX frame payload (SH message) with current message values
                 curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
                 curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
                 curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_INC;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_ON;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
                 curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
@@ -581,7 +584,9 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         else if(y>60 && y<110)  // FAV button (favorite intensity value for this load)
         {
             Serial.println("FAV"); 
-            
+
+            curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
+
             // Fill TX frame payload (SH message) with current message values
             curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
             curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
@@ -589,21 +594,21 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
             // if pressed FAV 4 times in a row then that means to SAVE the current intensity as the new favorite for the selected load
             // this is done in the do*SM function based on prevSHcmd and curSHcmd and curSHcmdRepeats
             // if pressed FAV 4 times in a row then that means to SAVE the current intensity as the new favorite for the selected load
-            if( ( prevSHcmd == SH_CMD_LOAD_GOTOFAV) && (prevLoadID == curLoadNodeInfo.SHthisNodeID) && (NUM_CMD_REPEATS_SAVE_FAV <= curSHcmdRepeats) )
-            {
-                curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_GOTOFAV;
-                curSHcmdRepeats += 1;
-            }
-            else
+            if( ( prevSHcmd == SH_CMD_LOAD_GOTOFAV) && (prevLoadID == curLoadNodeInfo.SHthisNodeID) && (NUM_CMD_REPEATS_SAVE_FAV >= curSHcmdRepeats) )
             {
                 curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_SAVEFAV;
                 curSHcmdRepeats = 0;
             }
+            else
+            {
+                curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_GOTOFAV;
+                curSHcmdRepeats += 1;
+            }
 
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = 0;
+            curLoadNodeInfo.SHthisNodeMsg.SHstatusH = FAKE_FAV_VALUE_DEBUG;
+            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = 4; // TODO - no hardcode test value
+            curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = FAKE_FAV_VALUE_DEBUG; // TODO - no hardcode test value
             curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
             curLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
             curLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
@@ -620,26 +625,26 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         {
             Serial.println("Decrease"); 
 
-            if( 0 < (curLoadNodeInfo.SHthisNodeLevelCurrent - 1) )
+            if( 0 < (curLoadNodeInfo.SHthisNodeLevelCurrent) ) //&& ( SH_POWERED_ON == curLoadNodeInfo.SHthisNodeIsPowered) )
             {
                 // decrement the current intensitylevel value
                 curLoadNodeInfo.SHthisNodeLevelCurrent -= 1;
-                
+
+                if(curLoadNodeInfo.SHthisNodeLevelCurrent == 0)
+                {
+                    curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_OFF;
+                }
+                else
+                {
+                    curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
+                }
+
                 // Fill TX frame payload (SH message) with current message values
                 curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
                 curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
                 curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_DEC;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-
-                if(curLoadNodeInfo.SHthisNodeLevelCurrent == 0)
-                {
-                    curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
-                }
-                else
-                {
-                    curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_ON;                    
-                }
-                
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
                 curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
@@ -656,7 +661,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
             else
             {
                 // do nothing, can't decrease below minimum/OFF
-                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
+//                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
             }
         }
     }    
@@ -1167,7 +1172,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                 {
                     // These commands will redraw the wall control Intensity Level Indicator based on value in statusVal field
                     case SH_CMD_LOAD_READCRNT:
-                    case SH_CMD_LOAD_GOTOFAV: // implies will be powred, as FAV cannot be full-off level
+                    case SH_CMD_LOAD_GOTOFAV: // implies will be powered, as FAV cannot be full-off level
                         curLoadNodeInfo.SHthisNodeLevelFav = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
                         curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
 
@@ -1465,6 +1470,10 @@ void selectLoad(uint16_t loadNum)
             curLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
+
+        // reset our command repeat counter for the new node
+        curSHcmdRepeats = 0;
 
         // Draw the new load button on wall control LCD screen
         lcdDrawLoadBtn(currentRoomNum, loadNum);     
