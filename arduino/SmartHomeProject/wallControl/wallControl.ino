@@ -476,53 +476,59 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         {
             Serial.println("ON");             
 
-            curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
-            curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+            if(  SH_POWERED_OFF == curLoadNodeInfo.SHthisNodeIsPowered )
+            {
+                curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
+                curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
-            // Fill TX frame payload (SH message) with current message values
-            curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
-            curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
-            curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_ON;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
-            curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
-            curLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
-            curLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+                // Fill TX frame payload (SH message) with current message values
+                curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
+                curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+                curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_ON;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
+                curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+                curLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+                curLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
 
-            // Set the xmitReady flag in the nodeinfo structure set above
-            curLoadNodeInfo.newSHmsgTX = YES;
-            curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                // Set the xmitReady flag in the nodeinfo structure set above
+                curLoadNodeInfo.newSHmsgTX = YES;
+                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            }
         }
         else if(y>100 && y<160)  // OFF button
         {
             Serial.println("OFF"); 
 
-            curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_OFF;
-            curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+            if(  SH_POWERED_ON == curLoadNodeInfo.SHthisNodeIsPowered )
+            {
+                curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_OFF;
+                curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
-            // Fill TX frame payload (SH message) with current message values
-            curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
-            curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
-            curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_OFF;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
-            curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
-            curLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
-            curLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
-            curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+                // Fill TX frame payload (SH message) with current message values
+                curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID;
+                curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+                curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_OFF;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
+                curLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+                curLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+                curLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+                curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
 
-            // Set the xmitReady flag in the nodeinfo structure set above
-            curLoadNodeInfo.newSHmsgTX = YES;
-            curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                // Set the xmitReady flag in the nodeinfo structure set above
+                curLoadNodeInfo.newSHmsgTX = YES;
+                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            }
         }
         if(y>180 && y<220)  // Room -> button (select next Room)
         {
