@@ -1,5 +1,5 @@
 /*
- *  NAME: unoNode
+ *  NAME: unoNodeTarget
  *  DESCRIPTION: Arduino code for an Uno R3 type Arduino board, in the SmartHome lighting and ceiling fan control system for
  *               Bill Toner's Fall 2015 Embedded Systems project EN.525.743 at Johns Hopkins University, Dorsey Center
  *               with Professor Houser.
@@ -247,6 +247,7 @@ SHnodeMasterInfo mySHnodeMasterInfo;
 #define SH_STATUS_FAILED        (uint8_t)0x01
 #define SH_STATUS_CONFIRMED     (uint8_t)0x02
 #define SH_STATUS_NOT_CONFIRMED (uint8_t)0x03
+#define SH_STATUS_NO_CMDS       (uint8_t)0x04
 
 
 // SH Message protocol fixed status values
@@ -602,11 +603,11 @@ void setup() {
 
 // main program loop, iterate infinitely until/unless hit a hard exit
 void loop() {
-  uint8_t nodeIDnum = 0;
+    uint8_t nodeIDnum = 0;
 
-  // put your main code here, to run repeatedly:
+    // put your main code here, to run repeatedly:
 
-    if(inXbeeConfigMode== YES)
+    if(inXbeeConfigMode == NO)
     {
         // NOT in Xbee module config mode, so run the SmartHome program
         
@@ -619,6 +620,7 @@ void loop() {
         // Check if already have received a new SmartHome message waiting to be processed
         if (newSHmsgRX == NO)
         {
+//            Serial.print(";");
             //check for a new incoming frame data
             zbRcvAPIframe();
         }
@@ -627,7 +629,7 @@ void loop() {
         if (newFrameForTX == YES)
         {
             // transmit the new TX frame
-            zbXmitAPIframe();
+//            zbXmitAPIframe();
         }
 
         if (userInputEvent != EVENT_NO_INPUT)
@@ -749,17 +751,19 @@ void initEEPROMnodeInfo(void)
 //  EEPROM.update(UNO_EEPROM_OFFSET_NUM_NODE_IDS, uint8_t(2) );
   EEPROM.update(UNO_EEPROM_OFFSET_NUM_NODE_IDS, uint8_t(2) );
 
-  tempNodeID = 0x0709;
+//  tempNodeID = 0x0709;
+  tempNodeID = 0xdead;
   programEEPROMnodeInfo( 0, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_LIGHT, tempNodeID, LOAD_POWERED_OFF, 2, SH_MAX_INTENSITY );
 
-  tempNodeID = 0x0a0c;
+//  tempNodeID = 0x0a0c;
+  tempNodeID = 0xbeef;
   programEEPROMnodeInfo( 1, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_FAN, tempNodeID, LOAD_POWERED_OFF, 8, SH_MAX_INTENSITY );
 
   Serial.println("Completed Initting EEPROM values");
 }
 
 
-// program the given EEPROM node info into EEPROM
+// program the given EEPROM node info into EEPROM NV storage
 void programEEPROMnodeInfo(uint8_t  nodeNumber,         // first node is num 0, second is num 1, etc
                            uint8_t  nodeLocation,
                            uint8_t  nodeType,
@@ -1099,6 +1103,7 @@ uint8_t zbRcvAPIframe(void)
 // pull the SmartHome message items out of Zigbee frame payload and save to global variables
 void extractRXpayload(void)
 {
+#if 0  
   // TODO - sort out duplication between these two styles, or if both styles should remain for "double-buffering"
   SHdestIDrx = BYTESWAP16(myZBframeRX.ZBfrmPayload.SHdestID);
   SHsrcIDrx = BYTESWAP16(myZBframeRX.ZBfrmPayload.SHsrcID);
@@ -1111,8 +1116,9 @@ void extractRXpayload(void)
   SHchksumRX = myZBframeRX.ZBfrmPayload.SHpayldCRC;
   SHreserved1rx = myZBframeRX.ZBfrmPayload.SHreserved1;
   SHreserved2rx = myZBframeRX.ZBfrmPayload.SHreserved2;
+#endif
 
-#if 0
+#if 1
   uint8_t nodeInfoIndex = 0; // 0xff means not in this unit
 
   // find node ID struct matching the destination node address, and fill in the mssage fields for that node ID
@@ -1168,6 +1174,9 @@ void processSHmsg(void)
 }
 
 
+
+// Do a SmartHome message conversation over Zigbee
+// This is Load-Driver unti specific, a Wall Control unit will have it's own implementation of something similar
 void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 {
   volatile uint8_t   SHmsgNextState;         // which of 4 message stages are we in now, or 0=idle?
@@ -1344,61 +1353,49 @@ void captureRXmsg(uint8_t nodeInfoIndex)
 }
 
 
-
+// Determine which command is pending for this load ID and execute it
 void SHrunCommand(uint8_t nodeInfoIndex)
 {
-  //switch ( SHcommandRX )
-  switch ( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand )
-  {
-    case SH_CMD_LOAD_ON:
-      // Code
-      digitalWrite(ledPin, HIGH);   // sets the LED on
-      break;
+  #if 0
+    //switch ( SHcommandRX )
+    switch ( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand )
+    {
+        case SH_CMD_LOAD_ON:
+//            digitalWrite(ledPin, HIGH);   // sets the LED on
+            loadPowerON();
+            break;
 
-    case SH_CMD_LOAD_OFF:
-      // Code
-      digitalWrite(ledPin, LOW);   // sets the LED off
-      break;
+        case SH_CMD_LOAD_OFF:
+//      digitalWrite(ledPin, LOW);   // sets the LED off
+        loadPowerOFF();
+        break;
 
-    case SH_CMD_NOP:  // No OPeration, DO NOTHING (same as default)
-    default:
-      // Unknown command, do nothing
-      break;
-  }
+        case SH_CMD_LOAD_INC:
+            loadIncreaseIntensity();
+            break;
+        
+        case SH_CMD_LOAD_DEC:
+            loadDecreaseIntensity();
+            break;
+        
+        case SH_CMD_LOAD_SETFAV:    // change load to Favorite Intensity Level - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_SAVEFAV:   // store new value as Favorite Intensity Level - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_READFAV:   // send Favorite Intensity Level back to SH message source node - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_READCRNT:  // send Current Intensity Level back to SH message source node - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_EVNT_NOTICE:  // NEEDED? SERVER will log ALL messages, so may nto need to specifically send something to it
+        case SH_CMD_NOP:  // No OPeration, DO NOTHING (same as default)
+        default:
+            // Unknown command, do nothing
+            break;
+    }
 
-  //goober
-#if 0
-  {
-    volatile uint16_t  SHthisNodeID;       // this node SH ID, might be one of multiple loads on this node
-    volatile uint8_t   SHthisNodeType;     // 0=ctrl, 1=light, 2=fan
-    volatile uint8_t   SHthisNodeType;     // 0=ctrl, 1=light, 2=fan
-    volatile uint8_t   SHthisNodeLevelFav;     // favorite dim/speed level for this load
-    volatile uint8_t   SHthisNodeLevelCurrent; // current dim/speed level for this load
-    volatile uint16_t  SHothrNodeID;       // other node in this SH message conversation, 0 if idle
-    volatile uint8_t   SHmsgState;         // which of 4 message stages are we in now, or 0=idle?
-    volatile uint8_t   SHmsgStatus;
-  } SHnodeInfo, *prtSHnodeInfo;
-#define SH_CMD_NOP               0x00 // No OPeration, do nothing
-#define SH_CMD_LOAD_ON           0x01 // Turn on the target load at this node
-#define SH_CMD_LOAD_OFF          0x02 // Turn off the target load at this node
-#define SH_CMD_LOAD_INC          0x03 // increase intensity at target load (brighter/faster)
-#define SH_CMD_LOAD_DEC          0x04 // decrease intensity at target load (dimmer/slower)
-#define SH_CMD_LOAD_SETFAV       0x05 // Set user favorite intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_SAVEFAV      0x06 // save current intensity as target load user favorite level (brightness/speed)
-#define SH_CMD_LOAD_READFAV      0x07 // read the saved favorite intensity at target load and xmit back to another node (brightness/speed))
-#define SH_CMD_LOAD_READCRNT     0x08 // read the current active intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_EVNT_NOTICE  0xff // decrease intensity at target load (dimmer/slower)
+    Serial.println("");
+    Serial.print("Ran SH cmd code 0x");
+    Serial.print(SHcommandRX, HEX);
+    Serial.println("");
 #endif
-
-
-  Serial.println("");
-  Serial.print("Ran SH cmd code 0x");
-  Serial.print(SHcommandRX, HEX);
-  Serial.println("");
-
-  // Send notice message to Server for logging what SmartHome command we received to run
-
 }
+
 
 void debugPrintRxBuffer(void)
 {
@@ -1467,7 +1464,8 @@ void enablePCint(byte pin)
 
 
 #define PWM_MIN_COUNT  (uint8_t)0
-#define PWM_MAX_COUNT  (uint8_t)255
+//#define PWM_MAX_COUNT  (uint8_t)255
+#define PWM_MAX_COUNT  (uint8_t)128
 #define PWM_NUM_STEPS   (uint8_t)5
 #define PWM_STEP_VAL   (uint8_t)50
 //#define PWM_STEP_VAL   (uint8_t)(PWM_MAX_COUNT / PWM_NUM_STEPS)
@@ -1511,6 +1509,7 @@ void loadToggle(uint8_t nodeInfoIndex)
 // TODO - EEPROM needs another byte per load to save on/off state as well as current intensity. If turn off, store that, but also keep current intensity for next on.
     // calculate new PWM value for analogWrite() call
 }
+
 
 // If load is currently full-OFF, then apply power to previous current intensity level
 // (ON/OFF is essentially an enable condition to the current intensity level)
@@ -1606,6 +1605,7 @@ void loadIncreaseIntensity(uint8_t nodeInfoIndex)
     Serial.println(tmpVal, DEC);
 }
 
+
 // decrease intensity level one step
 void loadDecreaseIntensity(uint8_t nodeInfoIndex)
 {
@@ -1661,6 +1661,7 @@ void changeLoad(uint8_t nodeInfoIndex)
 }
 
 
+#if 0
 // trigger the AC line triacs to fire, turning on 
 void enableSSRrelay(uint8_t nodeInfoIndex)
 {
@@ -1670,16 +1671,23 @@ void enableSSRrelay(uint8_t nodeInfoIndex)
 // calculate new PWM value in places that change the current intensity, and in powerOn setup function
 //    analogWrite(pin, newValue); // enable 
 }
+#endif
 
 
 // Interrupt vector handling routine for A0 to A5 Pin Change Interrupt inputs
 ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 {
-#if 0  
+    uint8_t AC0CrossCur = 0;
+
+    AC0CrossCur = digitalRead(PIN_AC_ZERO_CROSS);
+    
+#if 1  
     // check if AC Zero cross trigger OR debug Blue button
-    if( (digitalRead(PIN_AC_ZERO_CROSS) == AC0CROSS_AT_CROSSING) && (AC0CrossPrev   == AC0CROSS_NO_CROSSING) )
+    if( (AC0CROSS_AT_CROSSING == AC0CrossCur) && (AC0CROSS_NO_CROSSING == AC0CrossPrev) )
     {
-        enableSSRrelay(currentNodeInfoIndex);
+        //enableSSRrelay(currentNodeInfoIndex);
+        loadZeroCrossing();
+//        Serial.print(".");
     }
     else
 #else
@@ -1777,6 +1785,8 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         }
 
     }
+
+    AC0CrossPrev = AC0CrossCur;
 }  
 
 
@@ -1805,25 +1815,96 @@ void toggleXbeeConfigMode(void)
 
 // configure the PWM things
 // PWM frequench should be 60Hz or very close to that. Just longer is preferable to just shorter than 60Hz.
+// 120V AC line waveform is 60Hz cycle, but we are looknig for Zero-crossings, and there are two of these per cycle
+// so the Zero-Crossing indicator will happen at 120Hz.
+// Each half-cycle is 16/7mz/2 = 8.3ms
+// Our load intensity level is how much of that 8.3ms is on and how much of it is off.
+// do NOT use Timer0 or PWM pins 5 or 6, as messing with timer0 will mess with millis() used elsewhere.
+// check if PWM pin is on or OFF, if full-OFF then it's a 0 output, not a PWM output
 void setupPWM(void)
 {
     pinMode(PIN_CTRL_LIGHT,OUTPUT);  // LED PIN_LED_BLUE
     pinMode(PIN_CTRL_FAN,OUTPUT);  // LED PIN_LED_GREEN
 
     digitalWrite(PIN_LED_XBCONFIG, PIN_LED_OFF);
-    digitalWrite(PIN_CTRL_LIGHT, PIN_LED_OFF);
+//    digitalWrite(PIN_CTRL_LIGHT, PIN_LED_OFF);
+    digitalWrite(PIN_CTRL_LIGHT, LOW);
     digitalWrite(PIN_CTRL_FAN, PIN_LED_OFF);
 
     // initially configure PWM output for the Light load, at Full-OFF
-    TCCR0B = TCCR0B & B11111000 | B00000101;    // set timer 0 divisor to  1024 for PWM frequency of    61.04 Hz    
+//    TCCR0A = (TCCR0A & B00001111) | B11110000;    // set timer 0 for inverted output (0 at bottom, 1 at top)    
+//    TCCR0B = (TCCR0B & B11111000) | B00000101;    // set timer 0 divisor to  1024 for PWM frequency of    61.04 Hz    
+
 //    TCNT0 = 0;  // set timer counter #0 count value to 0
     pinMode(PIN_CTRL_LIGHT, OUTPUT);
-    analogWrite(PIN_CTRL_LIGHT, PWM_FULL_OFF);
+//    analogWrite(PIN_CTRL_LIGHT, PWM_FULL_OFF);
+//    analogWrite(PIN_CTRL_LIGHT, PWM_ON_20PCT);
+//    analogWrite(PIN_CTRL_LIGHT, 10);
+
 
     // iinitially configure PWM output for the Fan load, at Full-OFF
     pinMode(PIN_CTRL_FAN, OUTPUT);
-    analogWrite(PIN_CTRL_FAN, PWM_FULL_OFF);
+//    analogWrite(PIN_CTRL_FAN, PWM_FULL_OFF);
+//    analogWrite(PIN_CTRL_FAN, PWM_ON_80PCT);
+//    analogWrite(PIN_CTRL_FAN, 80);
 }
+
+
+// on a Zero Crossing detection from the 120V AC line waveform, 
+// Set output drivign the trial to LOW immediately at Zero-Crossing time.
+// Triac will stay on from a control signal of 1 until it hits another Zero-Crossing.
+// So keep the control 0 until time to turn the triac on. The portion of the triac time on is duty cycle.
+// Control should be a brief PULSE, so that it will be low again when the next Zero-Crossing occurs.
+//    otherwise, if control is still a 1 when we get back here then the triac will be ON for the full time of this half-cycle.
+void loadZeroCrossing(void)
+{
+    // At Zero-crossing, output low to loads, briefly
+    digitalWrite(PIN_CTRL_LIGHT, LOW);
+
+    // 
+    volatile uint32_t tmpCnt = 0;
+
+    // for loop counters defining how long after Zero-Crossing we turn the Triac on for this half-cycle
+    #define VERY_INTENSE 1
+    #define INTENSE 800
+    #define MED_INTENSE 1500
+    #define LOW_INTENSE 2000
+    #define LOWER)INTENSE 2500
+    
+//    for(tmpCnt=0; tmpCnt<10000; tmpCnt++); // VERY dim
+//    for(tmpCnt=0; tmpCnt<7500;  tmpCnt++); // VERY dim
+//    for(tmpCnt=0; tmpCnt<5000;  tmpCnt++); // VERY dim
+//    for(tmpCnt=0; tmpCnt<2500;  tmpCnt++); // VERY dim
+//    for(tmpCnt=0; tmpCnt<1;     tmpCnt++); // VERY bright
+//    for(tmpCnt=0; tmpCnt<800;   tmpCnt++); // bright
+//    for(tmpCnt=0; tmpCnt<1500;  tmpCnt++); // medium
+//    for(tmpCnt=0; tmpCnt<2000;  tmpCnt++); // dim
+    for(tmpCnt=0; tmpCnt<2500;  tmpCnt++); // dimer
+
+    digitalWrite(PIN_CTRL_LIGHT, HIGH);
+
+    #define PULSE_WIDTH 200
+    for(tmpCnt=0; tmpCnt<PULSE_WIDTH; tmpCnt++);
+
+    digitalWrite(PIN_CTRL_LIGHT, LOW);
+}
+
+#if 0
+// on a Zero Crossing detection from the 120V AC line waveform, start the PWM timers back at 0 again
+void loadZeroCrossing(void)
+{
+//    uint16_t tmpCnt = 0;
+
+//    for(tmpCnt=0; tmpCnt<50000; tmpCnt++);
+    
+    // Reset Timer 0 counter to value 0
+    TCNT0 = (uint8_t)0x0;
+    //TCNT0 = (uint8_t)0xff;
+//    analogWrite(PIN_CTRL_FAN, PWM_ON_80PCT);
+//        Serial.print("o");
+}
+#endif
+
 
 // configure the Pin Change Interrupt things for detecting AC Zero Cross signal and user push buttons
 void setupPCint(void) 
@@ -1847,7 +1928,8 @@ void setupPCint(void)
     digitalWrite(PIN_BRIGHER,HIGH);        // Green
     digitalWrite(PIN_DIMMER,HIGH);         // Red
 //    digitalWrite(PIN_AC_ZERO_CROSS,HIGH);  // Blue
-    digitalWrite(PIN_CHANGE_LOAD,HIGH);  // Blue
+//    digitalWrite(PIN_AC_ZERO_CROSS,LOW);  // Blue
+//    digitalWrite(PIN_CHANGE_LOAD,HIGH);  // Blue
 //    digitalWrite(PIN_XBCONFIG,HIGH);       // Yellow
     digitalWrite(PIN_OFF,HIGH);            // Yellow
 
@@ -1857,8 +1939,8 @@ void setupPCint(void)
     enablePCint(PIN_ON);
     enablePCint(PIN_BRIGHER);
     enablePCint(PIN_DIMMER);
-//    enablePCint(PIN_AC_ZERO_CROSS);
-    enablePCint(PIN_CHANGE_LOAD);
+    enablePCint(PIN_AC_ZERO_CROSS);
+//    enablePCint(PIN_CHANGE_LOAD);
 //    enablePCint(PIN_XBCONFIG);
     enablePCint(PIN_OFF);
 }
