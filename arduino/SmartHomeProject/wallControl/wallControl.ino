@@ -1116,8 +1116,8 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
               
                 // Prepare and Send the appropriate SmartHome command message via Zigbee
                 mySHzigbee.prepareTXmsg( 
+                    curLoadNodeInfo.SHthisNodeID,              // DestID is the load target that this WC node wants to control
                     thisWCnodeID,                              // Src ID is this node
-                    curLoadNodeInfo.SHthisNodeID,              // DestID is node that initiated this conversation
                     SH_MSG_TYPE_CMD_REQ,                       // MsgType
                     curLoadNodeInfo.SHthisNodeMsg.SHcommand,   // CMD
                     curLoadNodeInfo.SHthisNodeMsg.SHstatusH,   // Status H byte
@@ -1234,8 +1234,9 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
 uint8_t TXmsgACKREQ(uint8_t nodeInfoIndex)
 {
 #if 0
-  prepareTXmsg( curLoadNodeInfo.SHthisNodeID,             // Src ID is this node
+  prepareTXmsg( 
                 curLoadNodeInfo.SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
+                curLoadNodeInfo.SHthisNodeID,             // Src ID is this node
                 SH_MSG_TYPE_ACK_CREQ,                                                // MsgType
                 curLoadNodeInfo.SHthisNodeMsg.SHcommand,  // CMD
                 0, 0, 0                                   // statusH, statusL, statusVal

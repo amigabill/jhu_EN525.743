@@ -11,6 +11,10 @@
 #define SH_WC_ID_ROOM0 (uint16_t)0x0123
 
 
+#define  NO (uint8_t)0x00
+#define YES (uint8_t)0x01
+
+
 
 typedef struct
 {
@@ -85,10 +89,6 @@ typedef struct
 
 //#define SH_RESERVED_BYTE 0x00
 #define SH_RESERVED_BYTE 'R'
-
-
-#define  NO (uint8_t)0x00
-#define YES (uint8_t)0x01
 
 
 // Informational things only
@@ -201,8 +201,9 @@ typedef struct
 
 
 
-#define ZB_IN_FRAME_YES 1
-#define ZB_IN_FRAME_NO  0
+//#define ZB_IN_FRAME_YES 1
+//#define ZB_IN_FRAME_NO  0
+
 
 // TODO clean up TX vs RX when are same thing (LEN bytes, ADDR64 bytes etc)
 #define ZB_TX_FRM_DELMTR_BYTES   0x01
@@ -314,7 +315,7 @@ class SHzigbee
         uint16_t _ZBoffsetRXbuff;                  // offset index into the _ZBfrmBufferRX Zigbee Frame buffer
 	uint8_t  _ZBfrmRXchkSumCalc;               // locally calculated checksum of the ZB API frame
         uint8_t  _SHmessageChksumCalc;             // locally calculated checksum of the SmartHome Message payload
-        uint8_t  _ZBinFrameRX;
+//        uint8_t  _ZBinFrameRX;
 
 	void     initXmitAPIframe(void);
         uint8_t  calcChkSum8(uint8_t ui8);

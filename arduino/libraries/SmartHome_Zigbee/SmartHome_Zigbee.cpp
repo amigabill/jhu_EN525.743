@@ -12,9 +12,11 @@ SHzigbee::SHzigbee()
 	initXmitAPIframe();
         //initSHmsgRX();
 	
-	ZBinFrameRX = NO;
+        _ZBoffsetRXbuff = ZB_FRM_OFFSET_DELMTR; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer	
+
 	ZBnewFrameRXed = NO;
 	newSHmsgRX = NO;
+	ZBinFrameRX = NO;
 }
 
 
@@ -22,7 +24,7 @@ SHzigbee::SHzigbee()
 // Initialize the TX API frame with values we will use as standard
 void SHzigbee::initXmitAPIframe(void)
 {
-    _myZBframeTX.ZBfrmDelimiter  = ZB_START_DELIMITER;
+    _myZBframeTX.ZBfrmDelimiter  = ZB_START_DELIMITER; // 0x7e;
     _myZBframeTX.ZBfrmLength     = ZB_TX_FRM_LEN; 
     _myZBframeTX.ZBfrmType       = ZB_FRAME_TYPE_TX_REQ;
     _myZBframeTX.ZBfrmID         = (uint8_t)1; // always use Zigbee Frame ID of 1
@@ -313,38 +315,41 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 
         // Read a byte from uart RX buffer
         ZB_frm_byte = Serial.read();
+	    // store whatever current byte into RX buffer and increment offset index for next byte
+            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+//            _ZBoffsetRXbuff += 1;
 
-        if ((_ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIMITER))
+
+	Serial.print(ZB_frm_byte, HEX);
+	Serial.print(" ");
+
+        if ((ZBinFrameRX == NO) && (ZB_frm_byte == ZB_START_DELIMITER))
         {
             // beginning a new frame
-            _ZBinFrameRX = ZB_IN_FRAME_YES;
-            _ZBoffsetRXbuff = ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer
+            ZBinFrameRX = YES;
+            _ZBoffsetRXbuff = 0; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer
             _myZBframeRX.ZBfrmChksum = 0; //new frame starts new checksum
             _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter
-            _ZBoffsetRXbuff += 1;
+//            _ZBoffsetRXbuff += 1;
+
+	    Serial.println("Got new RX frame Delimiter");
         }
-        else if (ZBinFrameRX == ZB_IN_FRAME_NO) // and new byte, which is NOT ZB_START_DELIMITER
+        else if (ZBinFrameRX == NO) // and new byte, which is NOT ZB_START_DELIMITER
         {
             // NOT already in a frame, and NOT starting a new frame here, ignore unknown bytes in RX
             _ZBoffsetRXbuff = 0;
+            //ZBinFrameRX = NO;
             return (0);
         }
-        else  // ZBinFrameRX == ZB_IN_FRAME_YES so are in a frame
+        else  // ZBinFrameRX == YES so are in a frame
         {
-            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-            _ZBoffsetRXbuff += 1;
-
             if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_LENH)  //ZB frame BE lenH
             {
 	        ptrZBfrmLength[1] = ZB_frm_byte; //lenH
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_LENL)  //ZB frame BE lenL
             {
 	        ptrZBfrmLength[0] = ZB_frm_byte; //lenL
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte;
-//                _ZBoffsetRXbuff += 1;
             }	    
 
 	    // checksum is calculated on bytes BETWEEN (not including) the Zigbee frame length and checksum byte offsets
@@ -352,102 +357,67 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             // 64bit Zigbee addr
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_FTYPE)  //ZB frame Type
             {
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte;
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B7)  //ZB frame 64bit DADDR BE Hword MSbyte 7
             {
 	        ptrZBsaddr64H[3] = ZB_frm_byte; // BE MSbyte of the High 32bit portion
-////            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-////            _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B6)  //ZB frame 64bit DADDR Hword byte 6
             {
 	        ptrZBsaddr64H[2] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B5)  //ZB frame 64bit DADDR Hword byte 5
             {
 	        ptrZBsaddr64H[1] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B4)  //ZB frame 64bit DADDR Hword LSbyte 4
             {
 	        ptrZBsaddr64H[0] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B3)  //ZB frame 64bit DADDR Lword MSbyte 3
             {
     	        ptrZBsaddr64L[3] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B2)  //ZB frame 64bit DADDR Lword byte 2
             {
 	        ptrZBsaddr64L[2] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B1)  //ZB frame 64bit DADDR Lword byte 1
             {
 	        ptrZBsaddr64L[1] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B0)  //ZB frame 64bit DADDR Lword LSbyte 0
             {
 	        ptrZBsaddr64L[0] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 
             // 16bit Zigbee addr
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR16H)  //ZB frame 16bit DADDR MSbyte 1
             {
 	        ptrZBsaddr16[1] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR16L)  //ZB frame 16bit DADDR LSbyte 0
             {
 	        ptrZBsaddr16[0] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
             // Zigbee Options byte
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_OPTIONS)  //ZB frame Options
             {
 	        _myZBframeRX.ZBfrmOptions = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
             // SmartHome message payload bytes
@@ -457,19 +427,16 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        ptrZBfrmPldSHdestAddr16[1] = ZB_frm_byte;
 		ptrSHdestAddr16[1] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
+	        _SHmessageChksumCalc = 0; //init for this Zigbee frame and the SmartHome message contained within
+	        _SHmessageChksumCalc += ZB_frm_byte;
             }	    
             else if( _ZBoffsetRXbuff == (ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_ID_DEST_L) )  //SH Msg Dest addr BE LSbyte 0
             {
 	        ptrZBfrmPldSHdestAddr16[0] = ZB_frm_byte;
 		ptrSHdestAddr16[0] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
+	        _SHmessageChksumCalc += ZB_frm_byte;
             }	    
 
 	    // ZB Payload - 16bit SmartHome Node Source Address BE
@@ -477,24 +444,15 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 		ptrZBfrmPldSHsrcAddr16[1] = ZB_frm_byte;
 	        ptrSHsrcAddr16[1] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc = 0; //init for this Zigbee frame and the SmartHome message contained within
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
             else if( _ZBoffsetRXbuff == (ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_ID_SRC_L) )  //SH Msg Src addr MSbyte 1
             {
 		ptrZBfrmPldSHsrcAddr16[0] = ZB_frm_byte;
 	        ptrSHsrcAddr16[0] = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
 	    // ZB Payload - SmartHome Message Type (CMD_INIT, ACK_REQ, CONFIRM, COMPLETE)
@@ -502,12 +460,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHmsgType = ZB_frm_byte;
 		SHmsgRX.SHmsgType = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
 	    // ZB Payload - SmartHome Command
@@ -515,12 +469,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHcommand = ZB_frm_byte;
 		SHmsgRX.SHcommand = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
     	    // ZB Payload - SmartHome Status 2=H / 16bit StatusID BE Hbyte/MSbyte
@@ -528,12 +478,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHstatusH = ZB_frm_byte;
 		SHmsgRX.SHstatusH = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 
 	    // ZB Payload - SmartHome Status 1=L / 16bit StatusID BE Lbyte/LSbyte
@@ -541,12 +487,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHstatusL = ZB_frm_byte;
 		SHmsgRX.SHstatusL = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
 	    // ZB Payload - SmartHome Status 0=StatusVal 8bits
@@ -554,36 +496,24 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHstatusVal = ZB_frm_byte;
 		SHmsgRX.SHstatusVal = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 	
 	    // ZB Payload - SmartHome Reserved Bytes (for Future Use)
             else if( _ZBoffsetRXbuff == (ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_RESVD_1) )  //SH Msg Reserved1
             {
 	        _myZBframeRX.ZBfrmPayload.SHreserved1 = ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
 		SHmsgRX.SHreserved1 = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
             }	    
             else if( _ZBoffsetRXbuff == (ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_RESVD_2) )  //SH Msg Reserved1
             {
 	        _myZBframeRX.ZBfrmPayload.SHreserved2 = ZB_frm_byte;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
 		SHmsgRX.SHreserved2 = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
-
-	        _SHmessageChksumCalc += _SHmessageChksumCalc;
-
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
+	        _SHmessageChksumCalc += ZB_frm_byte;
             }	    
 
 	    // ZB Payload - SmartHome Message Checksum (provided by the sender)
@@ -591,14 +521,17 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             {
 	        _myZBframeRX.ZBfrmPayload.SHpayldChksum = ZB_frm_byte;
 		SHmsgRX.SHpayldChksum = ZB_frm_byte;
-//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
-//                _ZBoffsetRXbuff += 1;
+                _ZBfrmRXchkSumCalc += ZB_frm_byte;
 
 	        _SHmessageChksumCalc = 0xff - _SHmessageChksumCalc;
 	        // does the SmartHome Message Checksum match?
-		//
+		
+	Serial.print("SHchecksum  _ZBfrmBufferRX[");
+	Serial.print(_ZBoffsetRXbuff, HEX);
+	Serial.print("]=");
+	Serial.print(_ZBfrmBufferRX[_ZBoffsetRXbuff], HEX);
+	Serial.println();
 
-                _myZBframeRX.ZBfrmChksum += calcChkSum8(ZB_frm_byte);
             }	    
 	
 	    // END of the SmartHome Message / Zigbee Frame Payload
@@ -619,10 +552,18 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 		
 		
 		// indicate no longer receiving bytes for a Zigbee frame
-                _ZBinFrameRX == ZB_IN_FRAME_NO;
+                ZBinFrameRX = NO;
 
 		// and that a received SmartHome Message is ready to process
                 newSHmsgRX = YES;
+
+		Serial.print("ZBchecksum=");
+                Serial.print(_myZBframeRX.ZBfrmChksum, HEX);
+		Serial.print(" ?=? _ZBfrmRXchkSumCalc=");
+		Serial.print(_ZBfrmRXchkSumCalc, HEX);
+		Serial.print(" ; ZBinFrameRX=");
+		Serial.print(ZBinFrameRX, HEX);
+		Serial.println();
 
 		//debugPrintZBframeRX();
 #if 1
@@ -635,11 +576,23 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
                 }
                 Serial.println();
 #endif    
-
+                Serial.print("newSHmsgRX=");
+		Serial.print(newSHmsgRX, HEX);
                 Serial.println();
                 Serial.println("Finished receiving RXframe");
             }
+
         }	    
+#if 0
+	Serial.print("_ZBfrmBufferRX[");
+	Serial.print(_ZBoffsetRXbuff, HEX);
+	Serial.print("]=");
+	Serial.print(_ZBfrmBufferRX[_ZBoffsetRXbuff], HEX);
+	Serial.println();
+#endif
+
+	// increment offset into the RX buffer of bytes
+        _ZBoffsetRXbuff += 1;
     }
 }
     
