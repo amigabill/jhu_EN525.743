@@ -63,9 +63,9 @@ SdFile root;
 // default room is room # 0
 uint16_t currentRoomNum = 0;
 uint16_t lastRoomNum = 0; // to be updated in setup() bsaed on what is found in SD card
-uint8_t currentLoadNumInRoom = 0;
+uint8_t  currentLoadNumInRoom = 0;
 uint16_t curNumLoadsInRoom= 0;
-uint8_t lastLoadNumInRoom = 0;
+uint8_t  lastLoadNumInRoom = 0;
 
 
 //#include "SpiTFTbitmap.h"  // TODO - try to move bmpDraw function stuff into an external library at some point
@@ -135,7 +135,9 @@ void setup() {
         // Read the SmartHome ID for this Wall Control unit from SD card
         //getThisWCnodeIDfromSD();
         thisWCnodeID = getThisWCnodeIDfromSD();
-
+        Serial.print("This WC node has SH nodeID=");
+        Serial.println(thisWCnodeID, HEX);
+        
         char roomNumDirName[7] = "0";
         char loadNumFileName[16] = "/1/2.BIN";
 
@@ -721,7 +723,7 @@ uint16_t getLoadIDfromSD(uint16_t roomNum, uint8_t loadNum)
         Serial.print(" is ");
         Serial.println(tmpLoadID, HEX);        
     }
-
+    
     return(tmpLoadID);
 
 }
@@ -1168,7 +1170,8 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_COMPLETE: // WC RX - wait for Load Driver to tell how command execution went
-            Serial.print("    Received a SH_MSG_ST_COMPLETE ; SHcommand = ");
+//            Serial.print("    Received a SH_MSG_ST_COMPLETE ; SHcommand = ");
+            Serial.print("    State SH_MSG_ST_COMPLETE - Received SHcommand = ");
             Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
             Serial.println();
 
