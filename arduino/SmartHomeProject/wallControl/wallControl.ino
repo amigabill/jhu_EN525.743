@@ -79,6 +79,8 @@ uint8_t  lastLoadNumInRoom = 0;
 #define NO  (uint8_t)0x00
 
 
+#if 0
+// TODO move to nodeinfo iclude file
 #define ROOM_FIRST (uint16_t)0
 //#define DEFAULT_ROOM_NUM  (uint16_t)0
 #define DEFAULT_ROOM_NUM  ROOM_FIRST
@@ -91,6 +93,7 @@ uint8_t  lastLoadNumInRoom = 0;
 #define LOAD_CHANGE_ROTR (uint8_t)0x01
 #define LOAD_CHANGE_ROTL (uint8_t)0x00
 #define ROOM_NO_LOADS (uint16_t)0xffff
+#endif
 
 
 // SmartHome Node ID for this Wall Control unit

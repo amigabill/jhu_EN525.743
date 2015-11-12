@@ -47,7 +47,9 @@
  *               due to endian differences, and also due to differences in data packing and word alignments,
  *               particularly in my initial implementation of Zigbee transmit and receive functions.
  *
+ *               Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
  */
+ 
 // uncomment these DEBUG items to enable debug serial prints
 //#define DEBUG_ZB_RX
 //#define DEBUG_ZB_TX
@@ -72,20 +74,7 @@
 
 
 // Include libraries newly created for this project
-#include <ByteSwap.h>
-#if 0
-// The following LGPL 2.1+ byteswap macros slightly modified from
-// http://repo-genesis3.cbi.utsa.edu/crossref/ns-sli/usr/include/bits/byteswap.h.html
-// These byteswaps are needed, as 16bit ints and 32bit longs in the Zigbee message byte order are byteswapped
-// compared to the Arduino's requirements to conveniently use them as 16bit int or 32bit long values,
-// rather than doing more work to deal with everything as individual bytes
-#define BYTESWAP16(x) \
-  (uint16_t)((((x) >> 8) & 0xff) | (((x) & 0xff) << 8))
-
-#define BYTESWAP32(x) \
-  (uint32_t)((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >>  8) |               \
-             (((x) & 0x0000ff00) <<  8) | (((x) & 0x000000ff) << 24))
-#endif
+//#include <ByteSwap.h>
 
 
 ////#include "SmartHome_Zigbee.h"
@@ -98,23 +87,21 @@ SHzigbee mySHzigbee = SHzigbee();
 //#include <SmartHome_EEPROM.h>
 #if 1
 
-//#if 0 // move here later, with SHzigbee above here
-//#include <SmartHome_NodeInfo.h>
-//#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
-//typedef struct
-//{
-//  volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
-//  SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
-//} SHnodeMasterInfo, *prtSHnodeMasterInfo;
-//SHnodeMasterInfo mySHnodeMasterInfo;
-//#endif
+#include <SmartHome_NodeInfo.h>
+#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
+typedef struct
+{
+    volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
+    SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
+} SHnodeMasterInfo, *prtSHnodeMasterInfo;
+SHnodeMasterInfo mySHnodeMasterInfo;
 
 #ifdef uCtype uC_TYPE_UNO
 // uncomment next line if want to init program a new Arduino Uno board for use
 // Will ad dnumber of NodeIDs and fill in NodeInfo blocks for new and blank unit
 #define INIT_UNO_EEPROM
 
-#define UNO_SH_MAX_NODE_IDS               (uint16_t)2
+#define UNO_SH_MAX_NODE_IDS               (uint16_t)SH_NODE_NUM_IDS  //(uint16_t)2
 
 #include <EEPROM.h>
 
@@ -154,405 +141,38 @@ SHzigbee mySHzigbee = SHzigbee();
 #endif // uCtype uC_TYPE_UNO
 #endif // #if 0
 
-// use LOW and HIGH temporarily for early dev/debug with digital LED, before PWM is enabled
+// Is the load on or off? (regardless of current intensity value, so that we can ON back to the same intensity as when we went to OFF)
 #define LOAD_POWERED_ON  HIGH //LOW //(uint8_t)0x01
 #define LOAD_POWERED_OFF LOW  //HIGH //(uint8_t)0x00
+
+// The various intensity (brightness/speed) levels
+#define LOAD_INTENSITY_MIN       (uint16_t)0          // this level value is full-off
+#define LOAD_INTENSITY_FULL_OFF  LOAD_INTENSITY_MIN   // this level value is full-off
+#define LOAD_INTENSITY_LOW       (uint16_t)1          // this level value is full-off
+#define LOAD_INTENSITY_MED_LOW   (uint16_t)2          // this level value is full-off
+#define LOAD_INTENSITY_MED       (uint16_t)3          // this level value is full-off
+#define LOAD_INTENSITY_MED_HIGH  (uint16_t)4          // this level value is full-off
+#define LOAD_INTENSITY_MAX       (uint16_t)5          // this level value is full-on
+#define LOAD_INTENSITY_FULL_ON   LOAD_INTENSITY_MAX   // this level value is full-on
+#define LOAD_INTENSITY_HIGH      LOAD_INTENSITY_MAX   // this level value is full-on
+
 
 // defines for Arduino digital pins from only the tumber to D and ht enumber, such as 6->D6
 #define D6 6
 #define D9 9
 
 
-// TODO - find better place & reorganize
-#define PWM_MIN_COUNT  (uint8_t)0
-#define PWM_MAX_COUNT  (uint8_t)255
-#define PWM_NUM_STEPS   (uint8_t)5
-#define PWM_STEP_VAL   (uint8_t)50
-//#define PWM_STEP_VAL   (uint8_t)(PWM_MAX_COUNT / PWM_NUM_STEPS)
-#define PWM_FULL_OFF   (uint8_t)0
-#define PWM_ON_20PCT  (uint8_t)(1 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_40PCT  (uint8_t)(2 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_60PCT  (uint8_t)(3 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_80PCT  (uint8_t)(4 * (PWM_MAX_COUNT / 5))
-#define PWM_FULL_ON  (uint8_t)PWM_MAX_COUNT
+//#include <SmartHome_NodeInfo.h>
+//#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
+//typedef struct
+//{
+//  volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
+//  SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
+//} SHnodeMasterInfo, *prtSHnodeMasterInfo;
+//SHnodeMasterInfo mySHnodeMasterInfo;
 
 
 
-
-//#define  NO (uint8_t)0x00
-//#define YES (uint8_t)0x01
-
-
-
-
-// Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
-
-
-#if 0
-#define SH_NODE_NUM_FOR_CNTRLR  1                         // For a wall switch "controller"
-//#define SH_NODE_NUM_IDS  SH_NODE_NUM_FOR_CNTRLR  // For a wall switch "controller"
-#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
-#define SH_NODE_TYPE_SERVER  0x00  // Linux Server (NOT an Arduino platform)
-#define SH_NODE_TYPE_TARGET  0x01  // Target, has Triacs/PowerTail, NO LCD
-#define SH_NODE_TYPE_CNTRL   0x02  // Wall "switch" controller, has LCD, uSD
-#endif
-
-#define SH_MAX_INTENSITY 5 // Have this + 1 number of intensity levels to scroll up and down through, including 0
-
-
-#if 0
-typedef struct
-{
-    volatile uint16_t SHothrID;
-    volatile uint8_t  SHmsgType;
-    volatile uint8_t  SHcommand;
-    volatile uint8_t  SHstatusH;
-    volatile uint8_t  SHstatusL;
-    volatile uint16_t SHstatusID; // 16bit alternative to SHstatusH and SHstatusL but represents same bytes in message
-    volatile uint8_t  SHstatusVal;
-    volatile uint8_t  SHreserved1;
-    volatile uint8_t  SHreserved2;
-    volatile uint8_t  SHchksum;     // form this node or defined by another node
-    volatile uint8_t  SHcalcChksum; // checksum calculated for comparison to sender's value
-    volatile uint8_t  SHstatusTX;  // status of attempt to transmit a Zigbee API frame
-    volatile uint8_t  SHstatusRX;  // status of receiving a Zigbee API frame
-} SHmessage, *prtSHmessage;
-#endif
-
-
-#if 0
-typedef struct
-{
-    volatile uint16_t  SHthisNodeID;           // this node SH ID, might be one of multiple loads on this node
-    volatile uint8_t   SHthisNodeLoc;          // what building room is this node in? (8bit room ID)
-    volatile uint8_t   SHthisNodeType;         // 0=ctrl, 1=light, 2=fan
-    volatile uint16_t  SHthisNodePin;          // What Arduino board pin is controlled by this load Node? This is 16bit int value such as D6, D9 etc. #defines
-    volatile uint8_t   SHthisNodeIsPowered;    // is ON to some brightness/speed level, but something more than full-OFF, or full-OFF. 1=ON, 0=OFF
-    volatile uint8_t   SHthisNodeLevelCurrent; // current dim/speed level for this load
-    volatile uint8_t   SHthisNodeLevelFav;     // favorite dim/speed level for this load
-    volatile uint16_t  SHothrNodeID;           // other node in this SH message conversation, 0 if idle
-    volatile uint8_t   SHmsgCurrentState;      // which of 4 message stages are we in now, or 0=idle?
-    volatile uint8_t   SHmsgNextState;         // which of 4 message stages are we in now, or 0=idle?
-    volatile uint8_t   SHmsgCmd;               // current message command for this node
-    volatile uint8_t   SHmsgStatus;            // current message status for this node
-    SHmessage          SHthisNodeMsg;          // message fields for this node ID, to be in parallel to message fields of other Node IDs
-} SHnodeInfo, *prtSHnodeInfo;
-#endif
-
-#include <SmartHome_NodeInfo.h>
-#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
-typedef struct
-{
-  volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
-  SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
-} SHnodeMasterInfo, *prtSHnodeMasterInfo;
-SHnodeMasterInfo mySHnodeMasterInfo;
-
-
-#if 0
-typedef struct
-{
-  volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
-  SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
-} SHnodeMasterInfo, *prtSHnodeMasterInfo;
-
-SHnodeMasterInfo mySHnodeMasterInfo;
-#endif
-
-
-#if 0
-// SH message protocol stages / states
-#define SH_MSG_ST_IDLE      (uint8_t)0x00  // waiting to receive a command message
-#define SH_MSG_ST_CMD_INIT  (uint8_t)0x01  // begin an SH protocol message conversation
-#define SH_MSG_ST_ACK_REQ   (uint8_t)0x02  // achnowledge receipt of a CMD_INIT message, request confirmation
-#define SH_MSG_ST_CNFRM     (uint8_t)0x03  // confirm that this node sent a CMD_INIT message to indicated destination
-#define SH_MSG_ST_COMPLETE  (uint8_t)0x04  // complete the SH protocol conversation, include status value        
-
-// use node-specific versions of these instead, in the nodeInfo msg struct
-//uint8_t currentMsgState = SH_MSG_ST_IDLE;
-//uint8_t nextMsgState    = SH_MSG_ST_IDLE;
-
-// The 4 types of SmartHome message to be sent over Zigbee as payload.SHmsgType
-// together these four messages ame up one SmartHome protocol "conversation"
-#define SH_MSG_TYPE_IDLE      (uint8_t)0x00 // NO active message for this node
-#define SH_MSG_TYPE_CMD_REQ   (uint8_t)0x01 // Request recipient to run a new command
-#define SH_MSG_TYPE_ACK_CREQ  (uint8_t)0x02 // ACKnowledge new command received, Request Confirmation from Sender
-#define SH_MSG_TYPE_CONFIRM   (uint8_t)0x03 // Sender Confirms it did indeed initiate this new command request
-#define SH_MSG_TYPE_COMPLETED (uint8_t)0x04 // Recipient indicates command has been executed and completed
-
-// SmartHome node Status Values
-#define SH_STATUS_SUCCESS       (uint8_t)0x00
-#define SH_STATUS_FAILED        (uint8_t)0x01
-#define SH_STATUS_CONFIRMED     (uint8_t)0x02
-#define SH_STATUS_NOT_CONFIRMED (uint8_t)0x03
-#define SH_STATUS_NO_CMDS       (uint8_t)0x04
-
-
-// SH Message protocol fixed status values
-#define SH_MSG_STATUS_SUCCESS            0x01  // command completed successfully
-#define SH_MSG_STATUS_ERR_INVLD_SENDER   0x02  // addressed sender of command denied sending it
-#define SH_MSG_STATUS_ERR_WRNG_RCPT_TYPE 0x03  // recipient of the command is wrong type for command
-// such as if wall control received an on/off/intensity command
-
-// SmartHome node Commands
-#define SH_CMD_NOP               (uint8_t)0x00 // No OPeration, do nothing
-#define SH_CMD_LOAD_ON           (uint8_t)0x01 // Turn on the target load at this node
-#define SH_CMD_LOAD_OFF          (uint8_t)0x02 // Turn off the target load at this node
-#define SH_CMD_LOAD_INC          (uint8_t)0x03 // increase intensity at target load (brighter/faster)
-#define SH_CMD_LOAD_DEC          (uint8_t)0x04 // decrease intensity at target load (dimmer/slower)
-#define SH_CMD_LOAD_SETFAV       (uint8_t)0x05 // Set user favorite intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_SAVEFAV      (uint8_t)0x06 // save current intensity as target load user favorite level (brightness/speed)
-#define SH_CMD_LOAD_READFAV      (uint8_t)0x07 // read the saved favorite intensity at target load and xmit back to another node (brightness/speed))
-#define SH_CMD_LOAD_READCRNT     (uint8_t)0x08 // read the current active intensity at target load (brightness/speed)
-#define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // decrease intensity at target load (dimmer/slower)
-
-
-
-#define SH_NODE_ID_NUM_BYTES 2
-//#define SH_RESERVED_BYTE 0x00
-#define SH_RESERVED_BYTE 'R'
-
-// Smarthome message payload variables
-uint8_t SH_TargetLoadID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // destination addr
-uint8_t SH_DestID[SH_NODE_ID_NUM_BYTES] = {'d', 'u'}; // destination node ID
-uint8_t SH_SourceID[SH_NODE_ID_NUM_BYTES] = {'d', 'e'}; // source node ID
-uint8_t SH_StatusID[SH_NODE_ID_NUM_BYTES] = {0x00, 0x00}; // node addr for Status
-uint8_t SH_command = SH_CMD_NOP;
-uint8_t SH_nodeStatus = 0x00;
-uint8_t SH_msgCRC = 0x00;
-
-
-#define ZB_ID_COORD 0x00        // The Zigbee coordinator is always ID 0
-#define ZB_ID_PAN   0x42        // The ID for the local network. Other networks are on different PAN IDs.
-
-// Zigbee API frame stuff
-#define ZB_START_DELIMITER           (uint8_t)0x7e // indicates start of a Zigbee frame
-#define ZB_FRAME_TYPE_ATCMD_IMD      (uint8_t)0x08 // Transmit Request
-#define ZB_FRAME_TYPE_ATCMD_QUE      (uint8_t)0x09 // Transmit Request
-#define ZB_FRAME_TYPE_REMCMD_REQ     (uint8_t)0x17 // Transmit Request
-#define ZB_FRAME_TYPE_ATCMD_RESP     (uint8_t)0x88 // Transmit Request
-#define ZB_FRAME_TYPE_MDM_ST         (uint8_t)0x8a // Modem Status
-#define ZB_FRAME_TYPE_TX_REQ         (uint8_t)0x10 // Transmit Request (send a payload)
-#define ZB_FRAME_TYPE_TX_RESP        (uint8_t)0x8b // Transmit Response
-#define ZB_FRAME_TYPE_RX_RCVD        (uint8_t)0x90 // RX Received (someone sent a payload to us)
-#define ZB_FRAME_TYPE_RX_IOD_RCVD    (uint8_t)0x92 // RX IO Data Received
-#define ZB_FRAME_TYPE_NODE_ID_IND    (uint8_t)0x95 // Node ID Indicator
-#define ZB_FRAME_TYPE_REMCMD_RESP    (uint8_t)0x95 // Remote Command Response
-
-
-uint8_t ZBframeIDnumTX = 0;  // 0 to 255, this is allowed to roll over to 0 again
-uint8_t ZBframeIDnumRX = 0;  // 0 to 255, this is allowed to roll over to 0 again
-
-// TODO - cleanup what's not used here:
-#define ZB_64ADDR_BCAST {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff} //64bit BCAST is 0x000000000000ffff
-#define ZB_64ADDR_BCAST_HIGH (uint32_t)0x00000000 //64bit BCAST is 0x000000000000ffff
-#define ZB_64ADDR_BCAST_LOW  (uint32_t)0x0000ffff //64bit BCAST is 0x000000000000ffff
-//#define ZB_64ADDR_DEST ZB_64ADDR_BCAST
-//#define ZB_64ADDR_DEST {0x00, 0x13, 0xa2, 0x00, 0x40, 0xe6, 0xec, 0x3a} // c1at is 0013a20040e6ec3a
-//#define ZB_64ADDR_DEST {0x00, 0x13, 0xa2, 0x00, 0x40, 0xe6, 0xec, 0x3a} // r2api is 0013a20040e6ec3a
-#define ZB_64ADDR_DEST {0x00, 0x13, 0xa2, 0x00, 0x40, 0xe6, 0xec, 0x86} // r3api is 0013a20040e6ec86
-//#define ZB_64ADDR_DEST {0x00, 0x13, 0xa2, 0x00, 0x40, 0xe6, 0xec, 0x92} // r10at is 0013a20040e6ec92
-#define ZB_64ADDR_NUM_BYTES 8
-uint8_t ZB_64addrDest[ZB_64ADDR_NUM_BYTES]  = ZB_64ADDR_DEST; // destination addr
-//uint8_t ZB_64addrDest[ZB_64ADDR_NUM_BYTES]  = ZB_64ADDR_BCAST; // BCAST destination addr
-uint8_t ZB_64addrSrc[ZB_64ADDR_NUM_BYTES]  = ZB_64ADDR_BCAST; // source addr
-
-#define ZB_16ADDR_BCAST {0xff, 0xfe} // 16addr bcast or unknown
-#define ZB_16ADDR_BCAST_INT (uint16_t)0xfffe   // 16addr bcast or unknown
-#define ZB_16ADDR_NUM_BYTES 2
-uint8_t ZB_16addrDest[ZB_16ADDR_NUM_BYTES] = ZB_16ADDR_BCAST; // destination addr
-uint8_t ZB_16addrSrc[ZB_16ADDR_NUM_BYTES]  = ZB_16ADDR_BCAST; // source addr
-
-#define ZB_BCAST_RADIUS (uint8_t)0x00
-#define ZB_OPTIONS      (uint8_t)0x00
-
-uint8_t ZB_frameChkSum = 0; //calculate Zigbee Frame checksum here
-
-// TODO clean up TX vs RX when are same thing (LEN bytes, ADDR64 bytes etc)
-#define ZB_TX_FRM_DELMTR_BYTES   0x01
-#define ZB_TX_FRM_LEN_BYTES      0x02
-#define ZB_TX_FRM_TYPE_BYTES     0x01
-#define ZB_TX_FRM_ID_BYTES       0x01
-#define ZB_TX_FRM_DADDR64_BYTES  0x08
-#define ZB_TX_FRM_DADDR16_BYTES  0x02
-#define ZB_TX_FRM_BRADIUS_BYTES  0x01
-#define ZB_TX_FRM_OPTIONS_BYTES  0x01
-//#define ZB_TX_FRM_HEADER_BYTES  17
-#define ZB_TX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
-#define ZB_RX_FRM_HEADER_BYTES  (ZB_TX_FRM_DELMTR_BYTES + ZB_TX_FRM_LEN_BYTES + ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_OPTIONS_BYTES)
-
-#define ZB_FRM_PAYLOAD_BYTES    12  // fixed number in this design
-#define ZB_TX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
-#define ZB_TX_FRM_CHKSUM_BYTES  1
-#define ZB_TX_FRM_BYTES   (ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES)
-#define ZB_TX_FRM_BYTES_INT     (uint16_t)ZB_TX_FRM_BYTES
-#define ZB_TX_FRM_BYTES_SH_MAX   (ZB_TX_FRM_HEADER_BYTES + ZB_TX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES) // max bytes SmartHome nodes should expect to receive in a ZB frame
-
-#define ZB_RX_FRM_PAYLOAD_BYTES ZB_FRM_PAYLOAD_BYTES
-#define ZB_RX_FRM_BYTES         (uint16_t)(ZB_RX_FRM_HEADER_BYTES + ZB_RX_FRM_PAYLOAD_BYTES + ZB_TX_FRM_CHKSUM_BYTES)
-#define ZB_RX_FRM_BYTES_INT     (uint16_t)ZB_RX_FRM_BYTES
-
-#define ZB_TX_FRM_LEN  (uint16_t)(ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_ID_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_BRADIUS_BYTES + ZB_TX_FRM_OPTIONS_BYTES + ZB_FRM_PAYLOAD_BYTES)
-#define ZB_RX_FRM_LEN  (uint16_t)(ZB_TX_FRM_TYPE_BYTES + ZB_TX_FRM_DADDR64_BYTES + ZB_TX_FRM_DADDR16_BYTES + ZB_TX_FRM_OPTIONS_BYTES + ZB_FRM_PAYLOAD_BYTES)
-
-// Common frame offsets (for both TX and RX frames)
-#define ZB_FRM_OFFSET_DELMTR     0   // value at this offset MUST be 0x7e
-#define ZB_FRM_OFFSET_LENH       1
-#define ZB_FRM_OFFSET_LENL       2
-#define ZB_FRM_OFFSET_FTYPE      3
-
-// TX Request frame offsets
-#define ZB_FRM_OFFSET_FID        4
-#define ZB_FRM_OFFSET_TX_DADDR64BH  5
-#define ZB_FRM_OFFSET_TX_DADDR64B7  5
-#define ZB_FRM_OFFSET_TX_DADDR64B6  6
-#define ZB_FRM_OFFSET_TX_DADDR64B5  7
-#define ZB_FRM_OFFSET_TX_DADDR64B4  8
-#define ZB_FRM_OFFSET_TX_DADDR64BL  9
-#define ZB_FRM_OFFSET_TX_DADDR64B3  9
-#define ZB_FRM_OFFSET_TX_DADDR64B2  10
-#define ZB_FRM_OFFSET_TX_DADDR64B1  11
-#define ZB_FRM_OFFSET_TX_DADDR64B0  12
-#define ZB_FRM_OFFSET_TX_DADDR16H   13
-#define ZB_FRM_OFFSET_TX_DADDR16L   14
-#define ZB_FRM_OFFSET_TX_BRADIUS    15
-#define ZB_FRM_OFFSET_TX_OPTIONS    16
-#define ZB_FRM_OFFSET_TX_PAYLOAD    17
-//#define ZB_FRM_OFFSET_TX_CHKSUM     (ZB_FRM_OFFSET_TX_PAYLOAD + ZB_FRM_PAYLOAD_BYTES)
-#define ZB_FRM_OFFSET_TX_CHKSUM     (ZB_FRM_OFFSET_TX_PAYLOAD + ZB_TX_FRM_PAYLOAD_BYTES)
-
-// RX Received frame does NOT have BRADIUS or FrameID bytes, and so is 2 bytes shorter than a TXreq frame!!!
-#define ZB_FRM_OFFSET_RX_SADDR64BH  4
-#define ZB_FRM_OFFSET_RX_SADDR64B7  4
-#define ZB_FRM_OFFSET_RX_SADDR64B6  5
-#define ZB_FRM_OFFSET_RX_SADDR64B5  6
-#define ZB_FRM_OFFSET_RX_SADDR64B4  7
-#define ZB_FRM_OFFSET_RX_SADDR64BL  8
-#define ZB_FRM_OFFSET_RX_SADDR64B3  8
-#define ZB_FRM_OFFSET_RX_SADDR64B2  9
-#define ZB_FRM_OFFSET_RX_SADDR64B1  10
-#define ZB_FRM_OFFSET_RX_SADDR64B0  11
-#define ZB_FRM_OFFSET_RX_SADDR16H   12
-#define ZB_FRM_OFFSET_RX_SADDR16L   13
-#define ZB_FRM_OFFSET_RX_OPTIONS    14
-#define ZB_FRM_OFFSET_RX_PAYLOAD    15
-#define ZB_FRM_OFFSET_RX_CHKSUM     (ZB_FRM_OFFSET_RX_PAYLOAD + ZB_RX_FRM_PAYLOAD_BYTES)
-
-
-// Define a struct for the SmartHome payload portion of the Zigbee API Frame
-typedef struct
-{
-    volatile uint16_t SHdestID;     // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint16_t SHsrcID;      // 16bit Smarthome node ID (inside payload so that it can be encrypted)
-    volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
-    volatile uint8_t  SHcommand;    // 8bit Smarthome command
-    volatile uint8_t  SHstatusH;    // High Byte of 16bit Smarthome
-    volatile uint8_t  SHstatusL;    // Low byte of 16bbit Smarthome
-    volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
-    volatile uint8_t  SHreserved2;  // 8bit Smarthome message type
-    volatile uint8_t  SHpayldCRC;   // 8bit Smarthome message type
-} SHpayload, *prtSHpayload;
-
-//TODO - change these global vars to another instance of SHpayload struct for TX and again for TX
-volatile uint16_t SHdestIDrx = 0;
-volatile uint16_t SHsrcIDrx = 0;
-volatile uint8_t  SHmsgTypeRX = 0;
-volatile uint8_t  SHcommandRX = 0;
-volatile uint16_t SHstatusIDrx = 0; //16bits
-volatile uint8_t  SHstatusHrx = 0; // 8bits High of SHstatusIDrx
-volatile uint8_t  SHstatusLrx = 0; // 8bits Low of SHstatusIDrx
-volatile uint8_t  SHstatusValRX = 0;
-volatile uint8_t  SHchksumRX = 0;
-volatile uint8_t  SHreserved1rx = 0;
-volatile uint8_t  SHreserved2rx = 0;
-
-//TODO - change these global vars to another instance of SHpayload struct for TX and again for TX
-volatile uint16_t SHdestIDtx = 0;
-volatile uint16_t SHsrcIDtx = 0;
-volatile uint8_t  SHmsgTypeTX = 0;
-volatile uint8_t  SHcommandTX = 0;
-volatile uint16_t SHstatusIDtx = 0; //16bits
-volatile uint8_t  SHstatusHtx = 0; // 8bits High of SHstatusIDrx
-volatile uint8_t  SHstatusLtx = 0; // 8bits Low of SHstatusIDrx
-volatile uint8_t  SHstatusValTX = 0;
-volatile uint8_t  SHchksumTX = 0;
-volatile uint8_t  SHreserved1tx = 0;
-volatile uint8_t  SHreserved2tx = 0;
-
-
-// Define a struct for the Zigbee TX Request API frame
-typedef struct
-{
-    volatile uint8_t    ZBfrmDelimiter;
-    volatile uint16_t   ZBfrmLength;
-    volatile uint8_t    ZBfrmType;
-    volatile uint8_t    ZBfrmID;
-    volatile uint32_t   ZBdaddr64High;
-    volatile uint32_t   ZBdaddr64Low;
-    volatile uint16_t   ZBdaddr16;
-    volatile uint8_t    ZBfrmRadius;
-    volatile uint8_t    ZBfrmOptions;
-    //volatile uint8_t    ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
-    volatile SHpayload  ZBfrmPayload;
-    //SHpayload         ZBfrmPayload;
-    volatile uint8_t    ZBfrmChksum;;
-} ZBframeTX, *prtZBframeTX;
-
-ZBframeTX     myZBframeTX;
-prtZBframeTX  ptrMyZBframeTX = &myZBframeTX;
-uint8_t      *txBuffer = (uint8_t *)&myZBframeTX; //get a pointer to byte which points to our Zigbee Frame stuct, to treat it as TX buffer for Serial.write
-uint8_t       debugBufferTX[ZB_TX_FRM_BYTES];
-
-// define a struct for the Zigbee RX Received API frame
-typedef struct
-{
-    volatile uint8_t   ZBfrmDelimiter;
-    volatile uint16_t  ZBfrmLength;
-    volatile uint8_t   ZBfrmType;
-    volatile uint32_t  ZBsaddr64High;
-    volatile uint32_t  ZBsaddr64Low;
-    volatile uint16_t  ZBsaddr16;
-    volatile uint8_t   ZBfrmOptions;
-    //volatile uint8_t   ZBfrmPayload[ZB_FRM_PAYLOAD_BYTES];
-    SHpayload          ZBfrmPayload;
-    volatile uint8_t   ZBfrmChksum;;
-} ZBframeRX, *prtZBframeRX;
-
-ZBframeRX     myZBframeRX; //global variable to use
-prtZBframeRX  ptrMyZBframeRX = &myZBframeRX; //global pointer to use
-uint8_t      *rxBuffer = (uint8_t *)&myZBframeRX; //get a pointer to byte (ie. byte array) which points to our Zigbee Frame stuct, to treat it as RX buffer for Serial.read
-
-#define ZB_IN_FRAME_YES 1
-#define ZB_IN_FRAME_NO  0
-
-uint8_t ZBinFrameTX = ZB_IN_FRAME_NO;
-uint8_t ZBoffsetTXbuff = 0; // byte counter, delimiter byte is number 0. Used as offset into txBuffer while creating a frame to transmit
-
-uint8_t ZBinFrameRX = ZB_IN_FRAME_NO;
-uint8_t ZBoffsetRXbuff = 0; // byte counter, delimiter byte is number 0. Used as offset into rxBuffer while receiving a frame
-
-uint8_t mySHzigbee.ZBnewFrameRXed = NO;   // have received a new RX Received frame, waiting for processing
-uint8_t newFrameRXstatus = 0;  // 1 if success (got full frame and ZB chksum matches our calc)
-uint8_t newFrameForTX = 0;  // have a new TX Request frame ready to send out on uart/serial port
-
-uint16_t ZBfrmLengthRX = 0;
-uint8_t  ZBfrmRXchksumCalc = 0;
-
-uint8_t  newSHmsgRX = NO; // was a new SmartHome message received via Zigbee?
-
-#endif // commenting out large chunk of Zigbee stuff to get from library instead
-
-
-#define  EVENT_NO_INPUT (uint8_t)0x00
-uint8_t  userInputEvent = EVENT_NO_INPUT; // status for user input events (touchscreen/buttons etc. 1bit per possible event)
-
-
-uint8_t i = 0; //for loop counter
-
-// standard pin13 LED on Arduino Uno and Due for testing and debug. NOT compatible with LCS panel installed on Due nodes.
-uint16_t ledPin = 13;                 // LED connected to digital pin 13 for debug
-uint8_t ledPinState = 0;
 
 // input pins
 #define PIN_BUTTON_UP         HIGH
@@ -595,10 +215,14 @@ volatile uint8_t inXbeeConfigMode     = NO;
 volatile uint8_t AC0CrossPrev         = AC0CROSS_NO_CROSSING;
 
 
-#define NODE_INFO_INDEX_LIGHT 0  // the 0th index into NodeInfo array is for the light
-#define NODE_INFO_INDEX_FAN   1  // the 1st index into NodeInfo array is for the fan
-volatile uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_LIGHT;  // 
-//volatile uint8_t currentNodeInfoIndex= NODE_INFO_INDEX_FAN;  // 
+volatile uint8_t currentNodeInfoIndex= DEFAULT_LOAD_NUM;  // 
+
+
+uint8_t i = 0; //for loop counter
+
+// standard pin13 LED on Arduino Uno and Due for testing and debug. NOT compatible with LCS panel installed on Due nodes.
+uint16_t ledPin = 13;                 // LED connected to digital pin 13 for debug
+uint8_t ledPinState = 0;
 
 
 // Initialize things at boot time, before starting the main program loop below
@@ -618,22 +242,14 @@ void setup()
     ledPinState = 0;
 
     // configure PWM things for load intensity control
+    // NOTE: no longer using PWM, CLEANUP TODO
     //setupPWM();
 
     // configure manual pushbuttons (for debug controls and Xbee Config Mode selection)
-    //pcintSetup(PIN_AC_ZERO_CROSS);
+    // as well as the AC ZeroCross event signal
     setupPCint();
     
-    //initialize Zigbee frame tracking
-    mySHzigbee.ZBinFrameRX = ZB_IN_FRAME_NO;
-    mySHzigbee.ZBnewFrameRXed = NO;
-//    newFrameForTX = NO;
-
-//    newSHmsgRX = NO;
-//    ZBfrmLengthRX = 0;
-//    ZBfrmRXchksumCalc = 0;
-
-    userInputEvent = EVENT_NO_INPUT;   // start out with no user input event to handle
+//    userInputEvent = EVENT_NO_INPUT;   // start out with no user input event to handle
 
     // Xbee should be preconfigured for API mode, 9600, 8n1, so match that in Arduino serial port
     Serial.begin(9600);
@@ -664,39 +280,26 @@ void loop()
             doNodeIDmsgSM(nodeIDnum);
         }
 
-#if 0
-        // handled now in the doNodeIDmsgSM above
+#if 1
         // Check if already have received a new SmartHome message waiting to be processed
-        if (newSHmsgRX == NO)
+        if (mySHzigbee.newSHmsgRX == NO)
         {
 //            Serial.print(";");
             //check for a new incoming frame data
-            zbRcvAPIframe();
+            mySHzigbee.zbRcvAPIframe();
         }
-#endif
-
-#if 0
-        // don't need to do this here as it should be done further above
-        // Checkif have a new SmartHome message waiting to be sent for any load Nodes
-        for(i=0; i<mySHnodeMasterInfo.numNodeIDs; i++)
+        else
         {
-            if (newFrameForTX == YES)
+            for(i=0; i<mySHnodeMasterInfo.numNodeIDs; i++)
             {
-                // Do SmartHome message protocol for the waiting transmit message
-                doNodeIDmsgSM(i);
+                if(mySHzigbee.SHmsgRX.SHdestID == mySHnodeMasterInfo.nodeInfo[i].SHthisNodeID)
+                {
+                    captureRXmsg(i);
+                }
             }
         }
 #endif
 
-#if 0
-        // done in interrupt handler, not here
-        if (userInputEvent != EVENT_NO_INPUT)
-        {
-            // Have some user input event from LCD touchscreen or buttons
-            // determine if need to send a command
-            // determine if need to update LCD display
-        }
-#endif
         
     }
 }
@@ -760,6 +363,8 @@ uint8_t initNodeInfoUno(void)
 //            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
 //        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
 
+
+
     mySHnodeMasterInfo.nodeInfo[i].SHmsgCurrentState = SH_MSG_ST_IDLE;
     mySHnodeMasterInfo.nodeInfo[i].SHmsgNextState    = SH_MSG_ST_IDLE;
     mySHnodeMasterInfo.nodeInfo[i].SHmsgCmd          = (uint8_t)SH_CMD_NOP;
@@ -815,11 +420,11 @@ void initEEPROMnodeInfo(void)
 
 //  tempNodeID = 0x0709;
   tempNodeID = 0xdead;
-  programEEPROMnodeInfo( 0, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_LIGHT, tempNodeID, LOAD_POWERED_OFF, 2, SH_MAX_INTENSITY );
+  programEEPROMnodeInfo( 0, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_LIGHT, tempNodeID, LOAD_POWERED_OFF, 2, LOAD_INTENSITY_MAX );
 
 //  tempNodeID = 0x0a0c;
   tempNodeID = 0xbeef;
-  programEEPROMnodeInfo( 1, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_FAN, tempNodeID, LOAD_POWERED_OFF, 8, SH_MAX_INTENSITY );
+  programEEPROMnodeInfo( 1, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_FAN, tempNodeID, LOAD_POWERED_OFF, 8, LOAD_INTENSITY_MAX );
 
   Serial.println("Completed Initting EEPROM values");
 }
@@ -858,385 +463,10 @@ void programEEPROMnodeInfo(uint8_t  nodeNumber,         // first node is num 0, 
 #endif
 
 
-#if 0
-// TODO move to library instead
-// Transmit a Zigbee API TX Request Frame
-// Each Zigbee message frame has a 12byte payload, so length=23=0x17 bytes, total frame=27bytes
-// FIXME
-void zbXmitAPIframe(void)
-{
-  myZBframeTX.ZBfrmDelimiter = ZB_START_DELIMITER;
-  myZBframeTX.ZBfrmLength    = BYTESWAP16(ZB_TX_FRM_LEN);
-  myZBframeTX.ZBfrmType      = ZB_FRAME_TYPE_TX_REQ;
-  myZBframeTX.ZBfrmID        = 0x01;
-  myZBframeTX.ZBdaddr64High  = BYTESWAP32(ZB_64ADDR_BCAST_HIGH);
-  myZBframeTX.ZBdaddr64Low   = BYTESWAP32(ZB_64ADDR_BCAST_LOW);
-  myZBframeTX.ZBdaddr16      = BYTESWAP16(ZB_16ADDR_BCAST_INT);
-  myZBframeTX.ZBfrmRadius    = ZB_BCAST_RADIUS;
-  myZBframeTX.ZBfrmOptions   = ZB_OPTIONS;
 
-  // populate the TX frame payload data (aka RF Data)
-  //old way when initially getting frames to work. Now use prepareTXmsg() instead, need to cleanup - TODO
-  //populateTXpayload();
-
-  // initialize the Zigbee API frame checksum before calculating it
-  //    myZBframeTX.ZBfrmChksum = 0x00;
-  //    zbFrmCalcTxChksum();
-  myZBframeTX.ZBfrmChksum = zbFrmCalcTxChksum();
-
-  clearDebugBufferTX();
-  debugPrintTxBuffer();
-
-  for (ZBoffsetTXbuff = 0; ZBoffsetTXbuff < ZB_TX_FRM_BYTES; ZBoffsetTXbuff++)
-  {
-    // TODO change to if > 0 so match the receive bytes style
-    while ( Serial.availableForWrite() == 0 )
-    {
-      //wait for room in serial buffer, do nothing while waiting
-    }
-    Serial.write(txBuffer[ZBoffsetTXbuff]); //Uno
-    debugBufferTX[ZBoffsetTXbuff] = txBuffer[ZBoffsetTXbuff];
-  }
-
-  Serial.print("Finished sending TXframe");
-  printDebugBufferTX();
-}
-
-
-// TODO - cleanup, replaced this one with prepareTXmsg
-void populateTXpayload(void)
-{
-  // DEBUG data for testing the transmit
-  SHdestIDtx = BYTESWAP16(0x0102);
-  SHsrcIDtx = BYTESWAP16(0x0304);
-  SHmsgTypeTX = SH_MSG_TYPE_CMD_REQ;
-  SHcommandTX = SH_CMD_LOAD_ON;
-  SHstatusHtx = 0x07;
-  SHstatusLtx = 0x08;
-  //SHstatusIDtx = BYTESWAP16( (uint16_t)myZBframeRX.ZBfrmPayload.SHstatusH ); //uint16 gets both SHstatusH and SHstatusL
-  SHstatusIDtx = (SHstatusHtx << 8) | SHstatusLtx; //uint16 gets both SHstatusH and SHstatusL
-  SHstatusValTX = 0x09;
-  SHchksumTX = 0x0a;
-  SHreserved1tx = 'T';
-  SHreserved2tx = 'X';
-
-  myZBframeTX.ZBfrmPayload.SHdestID = SHdestIDtx;
-  myZBframeTX.ZBfrmPayload.SHsrcID = SHsrcIDtx;
-  myZBframeTX.ZBfrmPayload.SHmsgType = SHmsgTypeTX;
-  myZBframeTX.ZBfrmPayload.SHcommand = SHcommandTX;
-  myZBframeTX.ZBfrmPayload.SHstatusH = SHstatusHtx;
-  myZBframeTX.ZBfrmPayload.SHstatusL = SHstatusLtx;
-  myZBframeTX.ZBfrmPayload.SHstatusVal = SHstatusValTX;
-  myZBframeTX.ZBfrmPayload.SHpayldCRC = SHchksumTX;
-  myZBframeTX.ZBfrmPayload.SHreserved1 = SHreserved1tx;
-  myZBframeTX.ZBfrmPayload.SHreserved2 = SHreserved2tx;
-}
-
-
-// Prepare the TX frame message payload to be sent
-void prepareTXmsg( uint16_t prepSHsrcID,      // Source ID
-                   uint16_t prepSHdestID,     // Dest ID
-                   uint8_t  prepSHmsgType,    // Msg Type
-                   uint8_t  prepSHcommand,    // CMD
-                   uint8_t  prepSHstatusH,
-                   uint8_t  prepSHstatusL,
-                   uint8_t  prepSHstatusVal
-                 )
-{
-  myZBframeTX.ZBfrmPayload.SHdestID    = BYTESWAP16(prepSHdestID);
-  myZBframeTX.ZBfrmPayload.SHsrcID     = BYTESWAP16(prepSHsrcID);
-  myZBframeTX.ZBfrmPayload.SHmsgType   = prepSHmsgType;
-  myZBframeTX.ZBfrmPayload.SHcommand   = prepSHcommand;
-  myZBframeTX.ZBfrmPayload.SHstatusH   = prepSHstatusH;
-  myZBframeTX.ZBfrmPayload.SHstatusL   = prepSHstatusL;
-  myZBframeTX.ZBfrmPayload.SHstatusVal = prepSHstatusVal;
-  myZBframeTX.ZBfrmPayload.SHreserved1 = (uint8_t)'T';
-  myZBframeTX.ZBfrmPayload.SHreserved2 = (uint8_t)'X';
-  //calc payload message checksum
-  myZBframeTX.ZBfrmPayload.SHpayldCRC  = doCalcMsgChecksum(ZB_FRAME_TYPE_TX_REQ);
-}
-
-
-// calculate checksum for the given SH message payload structure inside of the Zigbee API frame
-// NOT the Zigbee Frame checksum value as last byte of the API frame
-//uint8_t doCalcMsgChecksum(SHpayload msgToCalc)
-uint8_t doCalcMsgChecksum(uint8_t ZBframeType)
-{
-  uint8_t calcChecksum = 0;
-
-  if (ZBframeType == ZB_FRAME_TYPE_TX_REQ)
-  {
-    // payloadBytes-1 so do not checksum the message checksum value
-    for (i = ZB_FRM_OFFSET_TX_PAYLOAD; i < (ZB_FRM_OFFSET_TX_PAYLOAD + ZB_TX_FRM_PAYLOAD_BYTES - 1); i++)
-    {
-      calcChecksum += txBuffer[i];
-    }
-  }
-  else if (ZBframeType == ZB_FRAME_TYPE_RX_RCVD)
-  {
-    // payloadBytes-1 so do not checksum the sender's message checksum value
-    for (i = ZB_FRM_OFFSET_RX_PAYLOAD; i < (ZB_FRM_OFFSET_RX_PAYLOAD + ZB_RX_FRM_PAYLOAD_BYTES - 1); i++)
-    {
-      calcChecksum += rxBuffer[i];
-#if 0
-      Serial.print(" <rxB=");
-      Serial.print(rxBuffer[i], HEX);
-      Serial.print(" ; cs=");
-      Serial.print(calcChecksum, HEX);
-      Serial.print("> ");
-#endif
-    }
-  }
-
-  calcChecksum = ( (uint8_t)0xff - calcChecksum );
-
-  return (calcChecksum);
-}
-
-
-// calculate the Zigbee frame checksum for this API TX Request frame
-uint8_t zbFrmCalcTxChksum(void)
-{
-  uint8_t ZBfrmTXchksumCalc = 0;
-
-  for (ZBoffsetTXbuff = ZB_FRM_OFFSET_FTYPE; ZBoffsetTXbuff < ZB_FRM_OFFSET_TX_CHKSUM; ZBoffsetTXbuff++)
-  {
-    // add to the checksum for this frame
-    ZBfrmTXchksumCalc += txBuffer[ZBoffsetTXbuff];
-  }
-
-  // Final part of Zigbee frame checksum calculation is to subtract current total from 0xff
-  // Save into txbuffer for sending
-  ZBfrmTXchksumCalc = 0xff - ZBfrmTXchksumCalc;
 
 
 #if 0
-  Serial.print(" <<zbTxChksum=");
-  Serial.print(ZBfrmTXchksumCalc, HEX);
-  Serial.print(" ?=? ");
-  Serial.print(txBuffer[ZB_FRM_OFFSET_TX_CHKSUM], HEX);
-  Serial.print(">> ");
-#endif
-
-  return (ZBfrmTXchksumCalc);
-}
-
-
-void clearDebugBufferTX(void)
-{
-  for (i = 0; i < ZB_TX_FRM_BYTES; i++)
-  {
-    debugBufferTX[i] = (uint8_t)0x00;
-  }
-}
-
-
-void printDebugBufferTX(void)
-{
-  Serial.println("");
-  Serial.print("debugBufferTX -> ");
-  for (i = 0; i < ZB_TX_FRM_BYTES; i++)
-  {
-    Serial.print(debugBufferTX[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println("");
-}
-
-void debugPrintTxBuffer(void)
-{
-  Serial.println("");
-  Serial.print("Ready to send a Zigbee API TX Request frame buffer -> ");
-  //for(i=0; i<=ZB_FRM_OFFSET_TX_CHKSUM; i++)
-  for (i = 0; i < ZB_TX_FRM_BYTES; i++)
-  {
-    Serial.print(txBuffer[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println("");
-}
-#endif // large chunk of Zigbee TX
-
-
-#if 0
-// second attempt, more like the working xmit frame code
-uint8_t zbRcvAPIframe2(void)
-{
-    
-}
-
-// received frame length value should match ZB_RX_FRM_BYTES
-uint8_t zbRcvAPIframe(void)
-{
-  uint8_t ZB_frm_byte = 0; // byte received in uart RX by Serial.read
-  uint8_t ZBchksumFromSender = 0;
-
-#if 1
-  if(Serial.available() > 0)
-  {
-      Serial.print("!");    
-  }
-#endif
-
-  while (Serial.available() > 0)
-  {
-
-    // Read a byte from uart RX buffer
-    ZB_frm_byte = Serial.read();
-
-    #if 0
-    Serial.print("Received a byte from Serial: ");
-    Serial.print(ZB_frm_byte, HEX);
-    Serial.print(" ");
-    #endif
-    
-    if ((ZBinFrameRX == ZB_IN_FRAME_NO) && (ZB_frm_byte == ZB_START_DELIMITER))
-    {
-      // beginning a new frame
-      ZBinFrameRX = ZB_IN_FRAME_YES;
-      ZBoffsetRXbuff = 0; //Delimiter byte is offset 0 into RX buffer
-      ZBfrmRXchksumCalc = 0; //new frame starts new checksum
-    }
-    else if (ZBinFrameRX == ZB_IN_FRAME_NO) // and new byte, which is NOT ZB_START_DELIMITER
-    {
-      // NOT already in a frame, and NOT starting a new frame here, ignore unknown bytes in RX
-      return (0);
-    }
-    //else // already in a frame
-    else if (ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_CHKSUM)
-    {
-      //put received byte into rx buffer (aka received Zigbee frame structure)
-      rxBuffer[ZBoffsetRXbuff] = ZB_frm_byte;
-      ZBchksumFromSender = ZB_frm_byte;
-
-      //george2 - change this to mor elike the library xmit code
-
-      //final checksum is ff - the sum of bytes 3 to N-1 (excludes the received checksum value)
-      ZBfrmRXchksumCalc = 0xff - ZBfrmRXchksumCalc;
-
-#if 1
-      Serial.print(" rx<");
-      Serial.print(ZB_frm_byte, HEX);
-      Serial.print("> cs<");
-      Serial.print(ZBfrmRXchksumCalc, HEX);
-      Serial.print("> ");
-#endif
-
-
-#if 0
-      Serial.println("");
-//      Serial.print(" <ZBfrmLengthRX=");
-//      Serial.print(.ZBfrmLength ZBfrmLengthRX, HEX);
-//      Serial.print(" ?= ZB_RX_FRM_LEN=");
-//      Serial.print(ZB_RX_FRM_LEN, HEX);
-      Serial.print(" || ZBchksumFromSender=");
-      Serial.print(ZBchksumFromSender, HEX);
-      Serial.print(" ?= ZBfrmRXchksumCalc=");
-      Serial.print(ZBfrmRXchksumCalc, HEX);
-      Serial.print(" -||- myZBframeRX.ZBfrmLength=");
-      Serial.print(myZBframeRX.ZBfrmLength, HEX);
-      Serial.println("> ");
-#endif
-
-      // check frame length and checksum are correct for this ZB frame
-      if ( (ZBfrmLengthRX == ZB_RX_FRM_LEN) &&
-           (ZBchksumFromSender == ZBfrmRXchksumCalc) )
-      {
-        //Serial.print(" <Ding1> ");
-        // Have a valid Zigbee frame of our expected length, assume it is valid SH message
-
-        // pull out our SmartHome data items into global vars
-        extractRXpayload();
-
-        // let rest of program know that a new RX message is waiting to be processed
-        newSHmsgRX = YES;
-      }
-
-      // end of frame, next byte received is NOT part of this same frame
-      ZBinFrameRX = ZB_IN_FRAME_NO;
-      return (0);
-    }
-
-
-    if (ZBinFrameRX == ZB_IN_FRAME_YES)
-    {
-      //put received byte into rx buffer (aka received Zigbee frame structure)
-      rxBuffer[ZBoffsetRXbuff] = ZB_frm_byte;
-
-      if (ZBoffsetRXbuff == ZB_FRM_OFFSET_LENL)
-      {
-        // have all bytes of the Zigbee Frame Length field, put this into a uint16_t variable
-        ZBfrmLengthRX = BYTESWAP16(myZBframeRX.ZBfrmLength);
-      }
-      else if ((ZBoffsetRXbuff >= ZB_FRM_OFFSET_FTYPE) && (ZBoffsetRXbuff < ZB_FRM_OFFSET_RX_CHKSUM))
-      {
-        // add to the checksum for this frame
-        ZBfrmRXchksumCalc += ZB_frm_byte;
-      }
-
-#if 0
-      Serial.print(" rx<");
-      Serial.print(ZB_frm_byte, HEX);
-      Serial.print("> cs<");
-      Serial.print(ZBfrmRXchksumCalc, HEX);
-      Serial.print("> ");
-#endif
-
-      //increment offset for next byte received in this frame (AFTER checking if should add to checksum)
-      ZBoffsetRXbuff++ ;
-    }
-  }
-}
-
-
-// pull the SmartHome message items out of Zigbee frame payload and save to global variables
-void extractRXpayload(void)
-{
-#if 0  
-    // TODO - sort out duplication between these two styles, or if both styles should remain for "double-buffering"
-    SHdestIDrx = BYTESWAP16(myZBframeRX.ZBfrmPayload.SHdestID);
-    SHsrcIDrx = BYTESWAP16(myZBframeRX.ZBfrmPayload.SHsrcID);
-    SHmsgTypeRX = myZBframeRX.ZBfrmPayload.SHmsgType;
-    SHcommandRX = myZBframeRX.ZBfrmPayload.SHcommand;
-    SHstatusHrx = myZBframeRX.ZBfrmPayload.SHstatusH;
-    SHstatusLrx = myZBframeRX.ZBfrmPayload.SHstatusL;
-    SHstatusIDrx = (SHstatusHrx << 8) | SHstatusLrx; //uint16 gets both SHstatusH and SHstatusL
-    SHstatusValRX = myZBframeRX.ZBfrmPayload.SHstatusVal;
-    SHchksumRX = myZBframeRX.ZBfrmPayload.SHpayldCRC;
-    SHreserved1rx = myZBframeRX.ZBfrmPayload.SHreserved1;
-    SHreserved2rx = myZBframeRX.ZBfrmPayload.SHreserved2;
-#endif
-
-#if 1
-  uint8_t nodeInfoIndex = 0; // 0xff means not in this unit
-
-    // find node ID struct matching the destination node address, and fill in the mssage fields for that node ID
-    //SHdestIDrx = BYTESWAP16(myZBframeRX.ZBfrmPayload.SHdestID);
-    for (nodeInfoIndex = 0; nodeInfoIndex < mySHnodeMasterInfo.numNodeIDs; nodeInfoIndex++)
-    {
-      //  mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgCurrentState = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState;
-//        if (SHdestIDrx == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID)
-        if (myZBframeRX.ZBfrmPayload.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID)
-        {
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID    = myZBframeRX.ZBfrmPayload.SHsrcID;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType   = myZBframeRX.ZBfrmPayload.SHmsgType;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand   = myZBframeRX.ZBfrmPayload.SHcommand;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = myZBframeRX.ZBfrmPayload.SHstatusH;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = myZBframeRX.ZBfrmPayload.SHstatusL;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusID  = ((myZBframeRX.ZBfrmPayload.SHstatusH << 8) | myZBframeRX.ZBfrmPayload.SHstatusL);
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = myZBframeRX.ZBfrmPayload.SHstatusVal;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHreserved1 = myZBframeRX.ZBfrmPayload.SHreserved1;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHreserved2 = myZBframeRX.ZBfrmPayload.SHreserved2;
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum    = myZBframeRX.ZBfrmPayload.SHpayldCRC;
-            //SHcalcChksum
-        }
-        // else this SH message was to a different node, do nothing
-    }
-#endif
-}
-#endif // large chunk of Zigbee RX
-
-
 // parse the received ZB frame payload to determine if message was for this node or not
 // and if it was, determine what to do as result
 // TODO - is this still used?
@@ -1263,7 +493,7 @@ void processSHmsg(void)
     // Last thing to do when processing an RX frame, so we're ready to receive another new frame
     mySHzigbee.newSHmsgRX = NO;
 }
-
+#endif
 
 
 // Do a SmartHome message conversation over Zigbee, if anything to do for the selected nodeInfo index
@@ -1274,9 +504,21 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
   volatile uint8_t   SHmsgCmd;
   volatile uint8_t   SHmsgStatus;
 
-    //Serial.print("ENTERING doNodeIDmsgSM for nodeInfoIndex=");
-    //Serial.println(nodeInfoIndex, DEC);
-    
+#if 0
+    Serial.print("ENTERING doNodeIDmsgSM for nodeInfoIndex=");
+    Serial.println(nodeInfoIndex, DEC);
+#endif
+
+#if 0
+            Serial.print(" received SHmsg daddr/destID is ");
+            Serial.print(mySHzigbee.SHmsgRX.SHdestID, HEX);
+            Serial.print(" ?=? ID for node IDX ");
+            Serial.print(nodeInfoIndex, DEC);
+            Serial.print(" : ");
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
+            Serial.println();
+#endif
+
     // update to previous iteration's next state
     //currentMsgState = nextMsgState;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgCurrentState = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState;
@@ -1288,18 +530,21 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
         case SH_MSG_ST_IDLE:  // waiting for receive SH_MSG_ST_CMD_INIT message
 #if 0
             Serial.print("ST_IDLE, newSHmsgRX=");
-            Serial.print(newSHmsgRX, HEX);
+            Serial.print(mySHzigbee.newSHmsgRX, HEX);
             Serial.print(" ; SHmsgTypeRX=");
-            Serial.print(SHmsgTypeRX, HEX);
+            Serial.print(mySHzigbee.SHmsgRX.SHmsgType, HEX);
             Serial.print(" ; SHdestIDrx=");
-            Serial.println(SHdestIDrx, HEX);
+            Serial.print(mySHzigbee.SHmsgRX.SHdestID, HEX);
+            Serial.print(" ?=? ");
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
+            Serial.println();
 #endif
 
-// TODO fix the destID part of this
-            if ( (YES == mySHzigbee.newSHmsgRX) && (SH_MSG_TYPE_CMD_REQ == mySHzigbee.SHmsgRX.SHmsgType) && (mySHzigbee.SHmsgRX.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID) )
+//            if ( (YES == mySHzigbee.newSHmsgRX) && (SH_MSG_TYPE_CMD_REQ == mySHzigbee.SHmsgRX.SHmsgType) && (mySHzigbee.SHmsgRX.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID) )
+            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CMD_REQ == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) )
             {
                 // TODO - going to keep it this way? - move to extractRXpayload? - keep this way for now
-                captureRXmsg(nodeInfoIndex);
+//                captureRXmsg(nodeInfoIndex);
                 Serial.print("New CMD at nodeID=");
                 Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
                 Serial.print(" ?=? ");
@@ -1311,6 +556,8 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
                 Serial.print(" ; chksum=");
                 Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum, HEX);
 
+                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = NO;
+
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_ACK_REQ;
             }
             else // this SH message was to a different node, do nothing this iteration
@@ -1320,9 +567,14 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_ACK_REQ:  // TX
+            Serial.print("In SH_MSG_ST_ACK_REQ for nodeID ");
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
+            Serial.print(" for command ");
+            Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
+            
         //    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
 
-#if 1
+#if 0
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX = TXmsgACKREQ(nodeInfoIndex);
             if ( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX == SH_STATUS_SUCCESS )
             {
@@ -1334,6 +586,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             }
 #endif
 
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
             break;
 
         case SH_MSG_ST_CNFRM:  // RX
@@ -1365,14 +618,15 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
             }
 #endif
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_IDLE;
+                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
             break;
 
         case SH_MSG_ST_COMPLETE: // TX
             // run the received SH command
             SHrunCommand(nodeInfoIndex);
-            mySHzigbee.prepareTXmsg( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
+            mySHzigbee.prepareTXmsg( 
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
                           SH_MSG_TYPE_COMPLETED,                                               // MsgType
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand,  // CMD
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH,
@@ -1409,8 +663,9 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 uint8_t TXmsgACKREQ(uint8_t nodeInfoIndex)
 {
 #if 0
-  prepareTXmsg( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
+  prepareTXmsg( 
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
+                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
                 SH_MSG_TYPE_ACK_CREQ,                                                // MsgType
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand,  // CMD
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH,
@@ -1453,6 +708,8 @@ void captureRXmsg(uint8_t nodeInfoIndex)
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHreserved2   = mySHzigbee.SHmsgRX.SHreserved2; // SHreserved2rx;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum      = mySHzigbee.SHmsgRX.SHpayldChksum; // SHchksumRX;
 //    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcalcChksum  = mySHzigbee.SHmsgRX.; // doCalcMsgChecksum(ZB_FRAME_TYPE_RX_RCVD);
+
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = YES;
 }
 
 
@@ -1565,29 +822,6 @@ void enablePCint(byte pin)
 }
 
 
-#define PWM_MIN_COUNT  (uint8_t)0
-//#define PWM_MAX_COUNT  (uint8_t)255
-#define PWM_MAX_COUNT  (uint8_t)128
-#define PWM_NUM_STEPS   (uint8_t)5
-#define PWM_STEP_VAL   (uint8_t)50
-//#define PWM_STEP_VAL   (uint8_t)(PWM_MAX_COUNT / PWM_NUM_STEPS)
-#define PWM_FULL_OFF   (uint8_t)0
-#define PWM_ON_20PCT  (uint8_t)(1 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_40PCT  (uint8_t)(2 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_60PCT  (uint8_t)(3 * (PWM_MAX_COUNT / 5))
-#define PWM_ON_80PCT  (uint8_t)(4 * (PWM_MAX_COUNT / 5))
-#define PWM_FULL_ON  (uint8_t)PWM_MAX_COUNT
-
-#define LOAD_INTENSITY_MIN       (uint16_t)0          // this level value is full-off
-#define LOAD_INTENSITY_FULL_OFF  LOAD_INTENSITY_MIN   // this level value is full-off
-#define LOAD_INTENSITY_LOW       (uint16_t)1          // this level value is full-off
-#define LOAD_INTENSITY_MED_LOW   (uint16_t)2          // this level value is full-off
-#define LOAD_INTENSITY_MED       (uint16_t)3          // this level value is full-off
-#define LOAD_INTENSITY_MED_HIGH  (uint16_t)4          // this level value is full-off
-#define LOAD_INTENSITY_MAX       (uint16_t)5          // this level value is full-on
-#define LOAD_INTENSITY_FULL_ON   LOAD_INTENSITY_MAX   // this level value is full-on
-#define LOAD_INTENSITY_HIGH      LOAD_INTENSITY_MAX   // this level value is full-on
-
 
 // NOT YET WORKING
 // turn the load on or off. If off, turn on to the previous intensity level, not necessarily 100%-on
@@ -1674,8 +908,6 @@ void loadPowerOFF(uint8_t nodeInfoIndex)
 
     if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == YES)
     {
-        analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, PWM_MIN_COUNT);
-
         mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
 //        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
         
@@ -1758,22 +990,7 @@ void loadDecreaseIntensity(uint8_t nodeInfoIndex)
 
     Serial.print("DEBUG - In loadDecreaseIntensity()");    
 
-//    tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent - PWM_STEP_VAL;
     tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
-
-#if 0
-    if( (tmpVal < PWM_MIN_COUNT) || ((tmpVal >= PWM_MIN_COUNT) && ((tmpVal - PWM_STEP_VAL) > tmpVal) ) )
-    {
-        tmpVal = PWM_MIN_COUNT;
-    }    
-    else
-    {
-        tmpVal -= PWM_STEP_VAL;
-    }
-
-// using PWM timers has been problematic, changing to a somewhat more manual pulse timing
-    analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, tmpVal);
-#endif
 
     // do not increase above max intensity
     if(tmpVal > LOAD_INTENSITY_MIN)
@@ -1993,46 +1210,6 @@ void toggleXbeeConfigMode(void)
 }
 
 
-#if 0
-// configure the PWM things
-// PWM frequench should be 60Hz or very close to that. Just longer is preferable to just shorter than 60Hz.
-// 120V AC line waveform is 60Hz cycle, but we are looknig for Zero-crossings, and there are two of these per cycle
-// so the Zero-Crossing indicator will happen at 120Hz.
-// Each half-cycle is 16/7mz/2 = 8.3ms
-// Our load intensity level is how much of that 8.3ms is on and how much of it is off.
-// do NOT use Timer0 or PWM pins 5 or 6, as messing with timer0 will mess with millis() and delay() used elsewhere.
-// check if PWM pin is on or OFF, if full-OFF then it's a 0 output, not a PWM output
-void setupPWM(void)
-{
-    pinMode(PIN_CTRL_LIGHT,OUTPUT);  // LED PIN_LED_BLUE
-    pinMode(PIN_CTRL_FAN,OUTPUT);  // LED PIN_LED_GREEN
-
-    digitalWrite(PIN_LED_XBCONFIG, PIN_LED_OFF);
-//    digitalWrite(PIN_CTRL_LIGHT, PIN_LED_OFF);
-//    digitalWrite(PIN_CTRL_LIGHT, LOW);
-//    digitalWrite(PIN_CTRL_FAN, PIN_LED_OFF);
-    digitalWrite(PIN_CTRL_LIGHT, LOAD_POWERED_OFF);
-    digitalWrite(PIN_CTRL_FAN, LOAD_POWERED_OFF);
-
-
-    // initially configure PWM output for the Light load, at Full-OFF
-//    TCCR0A = (TCCR0A & B00001111) | B11110000;    // set timer 0 for inverted output (0 at bottom, 1 at top)    
-//    TCCR0B = (TCCR0B & B11111000) | B00000101;    // set timer 0 divisor to  1024 for PWM frequency of    61.04 Hz    
-
-//    TCNT0 = 0;  // set timer counter #0 count value to 0
-    pinMode(PIN_CTRL_LIGHT, OUTPUT);
-//    analogWrite(PIN_CTRL_LIGHT, PWM_FULL_OFF);
-//    analogWrite(PIN_CTRL_LIGHT, PWM_ON_20PCT);
-//    analogWrite(PIN_CTRL_LIGHT, 10);
-
-
-    // iinitially configure PWM output for the Fan load, at Full-OFF
-    pinMode(PIN_CTRL_FAN, OUTPUT);
-//    analogWrite(PIN_CTRL_FAN, PWM_FULL_OFF);
-//    analogWrite(PIN_CTRL_FAN, PWM_ON_80PCT);
-//    analogWrite(PIN_CTRL_FAN, 80);
-}
-#endif
 
 
 // on a Zero Crossing detection from the 120V AC line waveform, 
@@ -2241,27 +1418,6 @@ void loadZeroCrossing(void)
 }
 
 
-#if 0
-// on a Zero Crossing detection from the 120V AC line waveform, start the PWM timers back at 0 again
-// this method was problematic as we need the control to the load's Triac to be OFF at the Zero-Cross,
-// Stay off briefly after Zero-Cross, pulse high briefly and then go back OFF before the next Zero-Cross event.
-// PWM method made the load Stuck-ON due to the triac control being ON at the Zero-Cross point, 
-// a situation which essentiallhy tells the triac to be ON for it's full half-cycle between Zero-Crossings.
-// So the PWM method is being removed in favor of a manual timing method or even better to 
-// use a timer instead of dummy wait loops.
-void loadZeroCrossing(void)
-{
-//    uint16_t tmpCnt = 0;
-
-//    for(tmpCnt=0; tmpCnt<50000; tmpCnt++);
-    
-    // Reset Timer 0 counter to value 0
-    TCNT0 = (uint8_t)0x0;
-    //TCNT0 = (uint8_t)0xff;
-//    analogWrite(PIN_CTRL_FAN, PWM_ON_80PCT);
-//        Serial.print("o");
-}
-#endif
 
 
 // configure the Pin Change Interrupt things for detecting AC Zero Cross signal and user push buttons
