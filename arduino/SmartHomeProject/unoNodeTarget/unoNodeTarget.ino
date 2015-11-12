@@ -48,6 +48,11 @@
  *               particularly in my initial implementation of Zigbee transmit and receive functions.
  *
  *               Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
+ *               
+ *               This program was originally intended to use PWM outputs tocontrol triac, and this support up to 6 or so loads per Arduino Uno driver board.
+ *               This proved problematic, and now the Triac control pulse is done in software, perhaps later as a different timer method than PWM, but
+ *               pure software controlled bit-banging output pins, and this can allow a larger number of loads in Uno than OWM would have allowed.
+ *               But for now, we remain using only one or two loads for testing/debug, and a large number may not be practical to make use of in real world
  */
  
 // uncomment these DEBUG items to enable debug serial prints
@@ -73,10 +78,6 @@
 // Include 3rd party libraries (downloaded, not created by my and not part of Arduino standard)
 
 
-// Include libraries newly created for this project
-//#include <ByteSwap.h>
-
-
 ////#include "SmartHome_Zigbee.h"
 #include <SmartHome_Zigbee.h>
 SHzigbee mySHzigbee = SHzigbee();
@@ -95,6 +96,9 @@ typedef struct
     SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
 } SHnodeMasterInfo, *prtSHnodeMasterInfo;
 SHnodeMasterInfo mySHnodeMasterInfo;
+
+volatile uint8_t currentNodeInfoIndex= DEFAULT_LOAD_NUM;  // 
+
 
 #ifdef uCtype uC_TYPE_UNO
 // uncomment next line if want to init program a new Arduino Uno board for use
@@ -162,18 +166,6 @@ SHnodeMasterInfo mySHnodeMasterInfo;
 #define D9 9
 
 
-//#include <SmartHome_NodeInfo.h>
-//#define SH_NODE_NUM_IDS  2                         // How many target loads on this node?
-//typedef struct
-//{
-//  volatile uint8_t numNodeIDs; // SH_NODE_NUM_IDS
-//  SHnodeInfo       nodeInfo[SH_NODE_NUM_IDS];
-//} SHnodeMasterInfo, *prtSHnodeMasterInfo;
-//SHnodeMasterInfo mySHnodeMasterInfo;
-
-
-
-
 // input pins
 #define PIN_BUTTON_UP         HIGH
 #define PIN_BUTTON_DOWN       LOW
@@ -215,15 +207,12 @@ volatile uint8_t inXbeeConfigMode     = NO;
 volatile uint8_t AC0CrossPrev         = AC0CROSS_NO_CROSSING;
 
 
-volatile uint8_t currentNodeInfoIndex= DEFAULT_LOAD_NUM;  // 
-
-
-uint8_t i = 0; //for loop counter
 
 // standard pin13 LED on Arduino Uno and Due for testing and debug. NOT compatible with LCS panel installed on Due nodes.
 uint16_t ledPin = 13;                 // LED connected to digital pin 13 for debug
 uint8_t ledPinState = 0;
 
+uint8_t i = 0; //for loop counter
 
 // Initialize things at boot time, before starting the main program loop below
 void setup() 
@@ -233,9 +222,9 @@ void setup()
     inXbeeConfigMode   = NO; // default NOT in Xbee module config mode, so UART/serial port is communication between AVR and Xbee for normal usage
 
     // if need to program a blank Arduino Uno node for first use in this system
-#ifdef INIT_UNO_EEPROM
-    initEEPROMnodeInfo();
-#endif
+    #ifdef INIT_UNO_EEPROM
+//        initEEPROMnodeInfo();
+    #endif
 
     // put your setup code here, to run once:
     pinMode(ledPin, OUTPUT);      // sets the digital pin as output
@@ -249,8 +238,6 @@ void setup()
     // as well as the AC ZeroCross event signal
     setupPCint();
     
-//    userInputEvent = EVENT_NO_INPUT;   // start out with no user input event to handle
-
     // Xbee should be preconfigured for API mode, 9600, 8n1, so match that in Arduino serial port
     Serial.begin(9600);
 
@@ -280,7 +267,6 @@ void loop()
             doNodeIDmsgSM(nodeIDnum);
         }
 
-#if 1
         // Check if already have received a new SmartHome message waiting to be processed
         if (mySHzigbee.newSHmsgRX == NO)
         {
@@ -288,7 +274,7 @@ void loop()
             //check for a new incoming frame data
             mySHzigbee.zbRcvAPIframe();
         }
-        else
+        else // have received a Zigbee/SH message to process
         {
             for(i=0; i<mySHnodeMasterInfo.numNodeIDs; i++)
             {
@@ -298,9 +284,6 @@ void loop()
                 }
             }
         }
-#endif
-
-        
     }
 }
 
@@ -463,39 +446,6 @@ void programEEPROMnodeInfo(uint8_t  nodeNumber,         // first node is num 0, 
 #endif
 
 
-
-
-
-#if 0
-// parse the received ZB frame payload to determine if message was for this node or not
-// and if it was, determine what to do as result
-// TODO - is this still used?
-void processSHmsg(void)
-{
-    uint8_t thisNodeIndex = (uint8_t)0xff; // 0xff means not in this unit
-    //debugPrintRxBuffer();
-
-    //check if SHdestIDrx is this node cotnroller or one of its target loads
-    //go through dest IDs stored in SD/eeprom (NV) and compare with SHdestIDrx in message
-    for (i = 0; i < mySHnodeMasterInfo.numNodeIDs; i++)
-    {
-        //if (SHdestIDrx == mySHnodeMasterInfo.nodeInfo[i].SHthisNodeID)
-        if (mySHzigbee.SHmsgRX.SHdestID == mySHnodeMasterInfo.nodeInfo[i].SHthisNodeID)
-        {
-            //goober
-            // run the received SH command
-            SHrunCommand(i);
-        }
-        // else this SH message was to a different node, do nothing
-    }
-
-    // We processed our new RX frame, so no longer have a new one
-    // Last thing to do when processing an RX frame, so we're ready to receive another new frame
-    mySHzigbee.newSHmsgRX = NO;
-}
-#endif
-
-
 // Do a SmartHome message conversation over Zigbee, if anything to do for the selected nodeInfo index
 // This is Load-Driver unit specific, a Wall Control unit will have it's own implementation of something similar
 void doNodeIDmsgSM(uint8_t nodeInfoIndex)
@@ -556,6 +506,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
                 Serial.print(" ; chksum=");
                 Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum, HEX);
 
+                mySHzigbee.newSHmsgRX = NO;
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = NO;
 
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_ACK_REQ;
@@ -622,8 +573,10 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_COMPLETE: // TX
+
             // run the received SH command
             SHrunCommand(nodeInfoIndex);
+
             mySHzigbee.prepareTXmsg( 
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
@@ -633,6 +586,8 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL,
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal
                         );
+            // indicate main loop that a TX frame is ready to send
+//            newFrameForTX = YES;
 
             Serial.print("nodeID=");
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
@@ -645,8 +600,8 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             Serial.print(" ; status=");
             Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal, HEX);
 
-            // indicate main loop that a TX frame is ready to send
-//            newFrameForTX = YES;
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_IDLE;
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand = SH_CMD_NOP;
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_IDLE;
             break;
 
@@ -788,39 +743,15 @@ void flipLEDpin(void)
 
 }
 
-#if 0
-// TODO cleanup
-void pcintSetup(byte pin)
-{
-  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
-  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
-  PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
-}
 
-
-// handle pin change interrupt for AC Zero-Cross signal on A4 here
-ISR (PCINT0_vect) 
-{
-  uint8_t ACzeroCross = 0;
-
-  ACzeroCross = digitalRead(A4);
-
-  if( (ACzeroCross == 0) && (ACzeroCrossPrev == 1) )
-  {
-      // have an AC line Zero-cross event
-      triggerTriac();
-  } 
-}
-#endif
-
-
+// Enable Pin-Change interrupts. These are NOT the int0 or int1 interrupt pins, 
+// this allows the use of A0-A5 etc. as interrupt input pins as well.
 void enablePCint(byte pin)
 {
     *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
     PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
     PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
 }
-
 
 
 // NOT YET WORKING
@@ -867,15 +798,6 @@ void loadPowerON(uint8_t nodeInfoIndex)
     if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == NO)
     {
         tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
-#if 0
-        // sanity check
-        if( (tmpVal > PWM_MAX_COUNT) )
-        {
-            tmpVal = PWM_MAX_COUNT;
-        }
-
-        analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, tmpVal);
-#endif
 
         // sanity check, reset to max intensith if somehow above that
         if(tmpVal > LOAD_INTENSITY_MAX)
@@ -1210,8 +1132,6 @@ void toggleXbeeConfigMode(void)
 }
 
 
-
-
 // on a Zero Crossing detection from the 120V AC line waveform, 
 // Set output drivign the trial to LOW immediately at Zero-Crossing time.
 // Triac will stay on from a control signal of 1 until it hits another Zero-Crossing.
@@ -1416,8 +1336,6 @@ void loadZeroCrossing(void)
         }
     }
 }
-
-
 
 
 // configure the Pin Change Interrupt things for detecting AC Zero Cross signal and user push buttons

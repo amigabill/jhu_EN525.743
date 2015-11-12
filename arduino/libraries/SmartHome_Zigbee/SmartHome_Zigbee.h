@@ -35,7 +35,7 @@ typedef struct
 
 
 
-// SH message protocol stages / states
+// SH message protocol stages / states for use in state machine current/next states
 #define SH_MSG_ST_IDLE      (uint8_t)0x00  // waiting to receive a command message
 #define SH_MSG_ST_CMD_INIT  (uint8_t)0x01  // begin an SH protocol message conversation
 #define SH_MSG_ST_ACK_REQ   (uint8_t)0x02  // achnowledge receipt of a CMD_INIT message, request confirmation
@@ -46,6 +46,7 @@ typedef struct
 //uint8_t currentMsgState = SH_MSG_ST_IDLE;
 //uint8_t nextMsgState    = SH_MSG_ST_IDLE;
 
+// message type fromt eh SmartHome Message payload content provided by message sender
 // The 4 types of SmartHome message to be sent over Zigbee as payload.SHmsgType
 // together these four messages ame up one SmartHome protocol "conversation"
 #define SH_MSG_TYPE_IDLE      (uint8_t)0x00 // NO active message for this node

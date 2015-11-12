@@ -728,8 +728,9 @@ uint16_t getLoadIDfromSD(uint16_t roomNum, uint8_t loadNum)
     }
     
     return(tmpLoadID);
-
 }
+
+
 // Send SmartHome message via Zigbee to request the current level for the given load ID
 uint8_t getCurLvlForLoad(uint16_t loadID)
 {
@@ -858,8 +859,6 @@ void lcdDrawLoadBtn(uint16_t roomNum, uint8_t loadNum)
     
     bmpDraw(btnFileName, 0, 256, 240, 320);
 }
-
-
 
 
 
@@ -1074,6 +1073,8 @@ uint32_t read32(File &f) {
 }
 
 #endif // USE_BMP_DRAW
+
+
 
 
 
