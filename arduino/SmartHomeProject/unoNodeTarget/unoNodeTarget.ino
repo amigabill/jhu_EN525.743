@@ -222,17 +222,14 @@ void setup()
     inXbeeConfigMode   = NO; // default NOT in Xbee module config mode, so UART/serial port is communication between AVR and Xbee for normal usage
 
     // if need to program a blank Arduino Uno node for first use in this system
+    // disable/comment out the initEEPROMnodeInfo() call if EEPROM has already been programmed with SmartHome/load data for this unit
     #ifdef INIT_UNO_EEPROM
-//        initEEPROMnodeInfo();
+        initEEPROMnodeInfo();
     #endif
 
     // put your setup code here, to run once:
     pinMode(ledPin, OUTPUT);      // sets the digital pin as output
     ledPinState = 0;
-
-    // configure PWM things for load intensity control
-    // NOTE: no longer using PWM, CLEANUP TODO
-    //setupPWM();
 
     // configure manual pushbuttons (for debug controls and Xbee Config Mode selection)
     // as well as the AC ZeroCross event signal
@@ -257,20 +254,22 @@ void loop()
 
     // put your main code here, to run repeatedly:
 
+//    delay(80);  // experiment to see if ZB receive can work at all and investigate timing issues
+    
+#if 1
     if(inXbeeConfigMode == NO)
     {
         // NOT in Xbee module config mode, so run the SmartHome program
         
-        for (nodeIDnum = 0; nodeIDnum < mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
-        {
-            // check current state, and maybe do something for this node ID if pending
-            doNodeIDmsgSM(nodeIDnum);
-        }
 
         // Check if already have received a new SmartHome message waiting to be processed
+        // Keep teh ZB Receive call first in line here, as it is most sensitive to timing 
+        //and dropped bytes if we take too long between reads
+        // it would be nice to be able to read from serial based on interrupts, either from RXbuff content
+        // or from a timer to get us back here frequently enough if there are long/slow chunks of code somewhere
+        // to get lost in. I don't know how to do that in Arduino though.
         if (mySHzigbee.newSHmsgRX == NO)
         {
-//            Serial.print(";");
             //check for a new incoming frame data
             mySHzigbee.zbRcvAPIframe();
         }
@@ -284,7 +283,33 @@ void loop()
                 }
             }
         }
+
+        // check if have a SmartHome message waiting to be sent
+        if (mySHzigbee.newSHmsgTX == YES)
+        {
+            // ?assemble? and transmit the frame
+        }
+
+        for (nodeIDnum = 0; nodeIDnum < mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
+        {
+            // check current state, and maybe do something for this node ID if pending
+            doNodeIDmsgSM(nodeIDnum);
+        }        
     }
+#endif
+
+#if 0
+    if(Serial.available() > 0)
+    {
+        while(Serial.available() > 0)
+        {
+            Serial.print(Serial.read(), HEX);
+            Serial.print(" ");
+        }
+        Serial.println("<>");
+    }
+#endif
+    
 }
 
 

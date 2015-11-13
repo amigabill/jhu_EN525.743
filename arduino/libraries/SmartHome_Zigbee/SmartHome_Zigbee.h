@@ -277,12 +277,12 @@ typedef struct
 class SHzigbee
 {
     public:
-	uint8_t    ZBinFrameRX;        // is a recognizable Zigbee frame coming in or not yet
-	uint8_t    ZBnewFrameRXed;     // Has a new Zigbee frame been received/completed
-	//uint8_t    ZBfrmLengthRX;
-	uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
-        SHpayload  SHmsgRX;            // SmartHome message received
-        SHpayload  SHmsgTX;            // SmartHome message to send
+	volatile uint8_t    ZBinFrameRX;        // is a recognizable Zigbee frame coming in or not yet
+	volatile uint8_t    ZBnewFrameRXed;     // Has a new Zigbee frame been received/completed
+	//volatile uint8_t    ZBfrmLengthRX;
+	volatile uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
+        volatile SHpayload  SHmsgRX;            // SmartHome message received
+        volatile SHpayload  SHmsgTX;            // SmartHome message to send
 
 	SHzigbee(); //constructor
 
@@ -322,6 +322,7 @@ class SHzigbee
         uint8_t  calcChkSum8(uint8_t ui8);
         uint8_t  calcChkSum16(uint16_t ui16);
         uint8_t  calcChkSum32(uint32_t ui32);
+	void     parseZBrcvBuffer(void);
 	void     debugPrintZBframeRX(void);
 
 }; // end class SHzigbee

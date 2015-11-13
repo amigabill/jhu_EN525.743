@@ -294,35 +294,86 @@ uint8_t SHzigbee::getMsgTypeTX(void)
 // so length=24=0x18 bytes, total frame=28bytes (<- double check that)
 // Zigbee data is defined to be Big-Endian (BE) while Arduino AVR is Little-Endian (LE)
 // so will need to take care to assemble 16bit and 32bit ints correctly
+//
+// NOTE: Prevoius attempts to receive wre flaky and dropped characters expected inthe message, spradically.
+// Now, this works better, to get the received bytes into a buffer ASAP, then later go through the buffer
+// and see what we get there for the other data structures to store.
+// The previous attempt was to try and get each byte into data structures, update running checksum, etc. per byte received,
+// and now that seems to maybe have been too much to do between bytes during the serial transfer, as I'm guessing that
+// the Zbee RX buffer became full and bytes were tossed out if nto enough room for them, if this was not reading them fast enough.
 uint8_t SHzigbee::zbRcvAPIframe(void)
 {
-    // use some pointer to unsigned int 8 (byte) to access parts of larger datatypes a byte at a time during Zigbee frame receive
-    uint8_t *ptrZBfrmLength  = (uint8_t *)&(_myZBframeRX.ZBfrmLength);
-    uint8_t *ptrZBsaddr64H   = (uint8_t *)&(_myZBframeRX.ZBsaddr64High);
-    uint8_t *ptrZBsaddr64L   = (uint8_t *)&(_myZBframeRX.ZBsaddr64Low);
-    uint8_t *ptrZBsaddr16    = (uint8_t *)&(_myZBframeRX.ZBsaddr16);
-    uint8_t *ptrZBfrmPldSHdestAddr16  = (uint8_t *)&(_myZBframeRX.ZBfrmPayload.SHdestID);
-    uint8_t *ptrZBfrmPldSHsrcAddr16   = (uint8_t *)&(_myZBframeRX.ZBfrmPayload.SHsrcID);
-    uint8_t *ptrSHdestAddr16          = (uint8_t *)&(SHmsgRX.SHdestID); // Pointer into SHmsgRX received SmartHome message struct
-    uint8_t *ptrSHsrcAddr16           = (uint8_t *)&(SHmsgRX.SHsrcID);  // Pointer into SHmsgRX received SmartHome message struct
-
     uint8_t ZB_frm_byte = 0; // byte received in uart RX by Serial.read
-//    uint8_t ZBchksumFromSender = 0; // checksum sent to us for comparison
 
+    if(Serial.available() == 0)
+    {
+	 
+    }
+    else
+    {
+	    Serial.println("HAVE serial data");
+    }
 
     while (Serial.available() > 0)
     {
 
         // Read a byte from uart RX buffer
         ZB_frm_byte = Serial.read();
+
+
+        if ((NO == ZBinFrameRX) && (ZB_START_DELIMITER == ZB_frm_byte))
+	{
+            // beginning a new frame
+            ZBinFrameRX = YES;
+            _ZBoffsetRXbuff = 0; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer
+	}
+        else if( (YES == ZBinFrameRX) && (ZB_FRM_OFFSET_RX_CHKSUM == _ZBoffsetRXbuff) )  //Zigbee Frame Checksum
+	{
+   	    // END of current Zigbee frame
+            ZBinFrameRX = NO;
+
+            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter	    
+
+	    debugPrintZBframeRX();
+	}
+
+
+        if (YES == ZBinFrameRX)
+	{
+            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter	    
+            _ZBoffsetRXbuff += 1;
+	}
+
+    }
+}
+
+
+// Copy the various data fields from the RX Zigbee frame buffer for use
+void SHzigbee::parseZBrcvBuffer(void)
+{
+    // use some pointer to unsigned int 8 (byte) to access parts of larger datatypes a byte at a time during Zigbee frame receive
+    uint8_t *ptrZBfrmLength           = (uint8_t *)&(_myZBframeRX.ZBfrmLength);
+    uint8_t *ptrZBsaddr64H            = (uint8_t *)&(_myZBframeRX.ZBsaddr64High);
+    uint8_t *ptrZBsaddr64L            = (uint8_t *)&(_myZBframeRX.ZBsaddr64Low);
+    uint8_t *ptrZBsaddr16             = (uint8_t *)&(_myZBframeRX.ZBsaddr16);
+    uint8_t *ptrZBfrmPldSHdestAddr16  = (uint8_t *)&(_myZBframeRX.ZBfrmPayload.SHdestID);
+    uint8_t *ptrZBfrmPldSHsrcAddr16   = (uint8_t *)&(_myZBframeRX.ZBfrmPayload.SHsrcID);
+    uint8_t *ptrSHdestAddr16          = (uint8_t *)&(SHmsgRX.SHdestID); // Pointer into SHmsgRX received SmartHome message struct
+    uint8_t *ptrSHsrcAddr16           = (uint8_t *)&(SHmsgRX.SHsrcID);  // Pointer into SHmsgRX received SmartHome message struct
+//    uint8_t ZBchksumFromSender = 0; // checksum sent to us for comparison
+
+#if 0
+    while()
+    {
+
 	    // store whatever current byte into RX buffer and increment offset index for next byte
-            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+            //_ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
 
 
-	Serial.print(ZB_frm_byte, HEX);
-	Serial.print(" ");
+//	Serial.print(ZB_frm_byte, HEX);
+//	Serial.print(" ");
 
-        if ((ZBinFrameRX == NO) && (ZB_frm_byte == ZB_START_DELIMITER))
+        if ((NO == ZBinFrameRX) && (ZB_START_DELIMITER == ZB_frm_byte))
         {
             // beginning a new frame
             ZBinFrameRX = YES;
@@ -331,16 +382,37 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter
             _ZBfrmRXchkSumCalc = 0;
 
-	    Serial.println("Got new RX frame Delimiter");
+//	    Serial.println("Got new RX frame Delimiter");
+	    Serial.print("_ZBfrmBufferRX[");
+	    Serial.print(_ZBoffsetRXbuff, DEC);
+	    Serial.print("] = ");
+	    Serial.print( _ZBfrmBufferRX[_ZBoffsetRXbuff], HEX);
+	    Serial.print(" ?=? ");
+	    Serial.println(ZB_frm_byte, HEX);
         }
-        else if (ZBinFrameRX == NO) // and new byte, which is NOT ZB_START_DELIMITER
+#if 0
+	else if (ZBinFrameRX == NO) // and new byte, which is NOT ZB_START_DELIMITER
         {
             // NOT already in a frame, and NOT starting a new frame here, ignore unknown bytes in RX
-            _ZBoffsetRXbuff = 0;
+//            _ZBoffsetRXbuff = 0;
             return (0);
         }
-        else  // ZBinFrameRX == YES so are in a frame
+#endif
+	else if(ZBinFrameRX == YES) // ZBinFrameRX == YES so are in a frame
         {
+	    // increment offset into the RX buffer of bytes
+            _ZBoffsetRXbuff += 1;
+
+	    // store whatever current byte into RX buffer
+            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+
+	    Serial.print("_ZBfrmBufferRX[");
+	    Serial.print(_ZBoffsetRXbuff, DEC);
+	    Serial.print("] = ");
+	    Serial.print( _ZBfrmBufferRX[_ZBoffsetRXbuff], HEX);
+	    Serial.print(" ?=? ");
+	    Serial.println(ZB_frm_byte, HEX);
+
             if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_LENH)  //ZB frame BE lenH
             {
 	        ptrZBfrmLength[1] = ZB_frm_byte; //lenH
@@ -352,12 +424,15 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 
 	    // checksum is calculated on bytes BETWEEN (not including) the Zigbee frame length and checksum byte offsets
 
-            // 64bit Zigbee addr
+	    // Zigbee Frame Type
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_FTYPE)  //ZB frame Type
             {
-                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+//                _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; 
+                _myZBframeRX.ZBfrmType = ZB_frm_byte;
                 _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
+
+            // Zigbee 64bit Source addr
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR64B7)  //ZB frame 64bit DADDR BE Hword MSbyte 7
             {
 	        ptrZBsaddr64H[3] = ZB_frm_byte; // BE MSbyte of the High 32bit portion
@@ -399,7 +474,7 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
                 _ZBfrmRXchkSumCalc += ZB_frm_byte;
             }	    
 
-            // 16bit Zigbee addr
+            // Zigbee 16bit Source addr
             else if(_ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_SADDR16H)  //ZB frame 16bit DADDR MSbyte 1
             {
 	        ptrZBsaddr16[1] = ZB_frm_byte;
@@ -536,7 +611,7 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 	
 	    // END of Zigbee Frame bytes which are included inteh ZB Frame Checksum calculation
 	
-	    // ZB Frame checksum
+	    // Zigbee Frame checksum
             else if( _ZBoffsetRXbuff == ZB_FRM_OFFSET_RX_CHKSUM )  //Zigbee Frame Checksum
             {
 	        _myZBframeRX.ZBfrmChksum = ZB_frm_byte;
@@ -579,6 +654,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
             }
 
         }	    
+
+
 #if 0
 	Serial.print("_ZBfrmBufferRX[");
 	Serial.print(_ZBoffsetRXbuff, HEX);
@@ -588,12 +665,14 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 #endif
 
 	// increment offset into the RX buffer of bytes
-        _ZBoffsetRXbuff += 1;
+//        _ZBoffsetRXbuff += 1;
     }
+#endif
 }
-    
-#if 0
-void debugPrintZBframeRX(void)
+
+
+// Send the Zigbee frame receive buffer to Serial port monitor for developer/debugging purposes
+void SHzigbee::debugPrintZBframeRX(void)
 {
     uint16_t i=0;
 
@@ -603,8 +682,7 @@ void debugPrintZBframeRX(void)
         Serial.print( _ZBfrmBufferRX[i], HEX );
 	Serial.print(" ");
     }
-    Serial.println();
+    Serial.println("  <>");
 }
-#endif
 
 
