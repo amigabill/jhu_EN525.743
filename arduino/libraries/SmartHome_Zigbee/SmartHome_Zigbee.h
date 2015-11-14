@@ -306,6 +306,8 @@ class SHzigbee
 	uint8_t zbRcvAPIframe(void);
 
     private:
+	// Prefix ALL private items with "_" (underscore) as coding style to help indicate public vs private
+	
         ZBframeTX     _myZBframeTX;                //A Zigbee TX REQ type API frame struct instance to work with
         ////prtZBframeTX  ptrMyZBframeTX = &_myZBframeTX;
         uint8_t _ZBfrmBufferTX[ZB_TX_FRM_BYTES];   // byte array buffer to dump into Serial.write()
@@ -318,14 +320,14 @@ class SHzigbee
         uint8_t  _SHmessageChksumCalc;             // locally calculated checksum of the SmartHome Message payload
 //        uint8_t  _ZBinFrameRX;
 
-	void     initXmitAPIframe(void);
-        uint8_t  calcChkSum8(uint8_t ui8);
-        uint8_t  calcChkSum16(uint16_t ui16);
-        uint8_t  calcChkSum32(uint32_t ui32);
-	void     parseZBbufferRX(void);
-	void     debugPrintZBframeBufRX(void);
-	void     debugPrintZBframeStructRX(void);
-	void     debugPrintSHmsgRX(void);
+	void     _initXmitAPIframe(void);
+        uint8_t  _calcChkSum8(uint8_t ui8);
+        uint8_t  _calcChkSum16(uint16_t ui16);
+        uint8_t  _calcChkSum32(uint32_t ui32);
+	void     _parseZBbufferRX(void);
+	void     _debugPrintZBframeBufRX(void);
+	void     _debugPrintZBframeStructRX(void);
+	void     _debugPrintSHmsgRX(void);
 
 }; // end class SHzigbee
 
