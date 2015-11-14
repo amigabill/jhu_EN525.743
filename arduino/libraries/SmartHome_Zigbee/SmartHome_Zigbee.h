@@ -324,7 +324,9 @@ class SHzigbee
         uint8_t  calcChkSum32(uint32_t ui32);
 	void     parseZBbufferRX(void);
 	void     debugPrintZBframeBufRX(void);
+	void     debugPrintZBframeStructRX(void);
+	void     debugPrintSHmsgRX(void);
 
 }; // end class SHzigbee
 
-#endif
+#endif // SH_ZIGBEE_H

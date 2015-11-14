@@ -691,7 +691,7 @@ void captureRXmsg(uint8_t nodeInfoIndex)
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum      = mySHzigbee.SHmsgRX.SHpayldChksum; // SHchksumRX;
 //    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcalcChksum  = mySHzigbee.SHmsgRX.; // doCalcMsgChecksum(ZB_FRAME_TYPE_RX_RCVD);
 
-    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = YES;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = mySHzigbee.newSHmsgRX; //YES; ??
 }
 
 
