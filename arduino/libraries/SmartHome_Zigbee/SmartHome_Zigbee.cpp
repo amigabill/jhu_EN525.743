@@ -305,51 +305,65 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 {
     uint8_t ZB_frm_byte = 0; // byte received in uart RX by Serial.read
 
-    if(Serial.available() == 0)
-    {
-	 
-    }
-    else
-    {
-	    Serial.println("HAVE serial data");
-    }
+    uint16_t ZBfrmLen16bit = 0;
+    uint8_t  *ptrFrmLen16bit = (uint8_t *)&ZBfrmLen16bit;
+    uint8_t *ptrZBbufFrmType = _ZBfrmBufferRX + ZB_FRM_OFFSET_FTYPE;
 
-    while (Serial.available() > 0)
+
+    // Check if a new ZB frame is incoming
+    if(Serial.available() > 0)
     {
+	//Serial.println("HAVE serial data");
 
         // Read a byte from uart RX buffer
         ZB_frm_byte = Serial.read();
 
-
+        // check if starting a new frame
         if ((NO == ZBinFrameRX) && (ZB_START_DELIMITER == ZB_frm_byte))
 	{
             // beginning a new frame
             ZBinFrameRX = YES;
             _ZBoffsetRXbuff = 0; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer
-	}
-        else if( (YES == ZBinFrameRX) && (ZB_FRM_OFFSET_RX_CHKSUM == _ZBoffsetRXbuff) )  //Zigbee Frame Checksum
-	{
-   	    // END of current Zigbee frame
+
+            while (Serial.available() == 0);  // wait for Zigbee Frame length BE MSByte
+            //ZB_frm_byte = Serial.read();
+            _ZBfrmBufferRX[ZB_FRM_OFFSET_LENH] = Serial.read();
+
+            while (Serial.available() == 0);  // wait for Zigbee Frame length BE LSbyte
+            //ZB_frm_byte = Serial.read();
+            _ZBfrmBufferRX[ZB_FRM_OFFSET_LENL] = Serial.read();
+
+
+            ptrFrmLen16bit[1] = _ZBfrmBufferRX[ZB_FRM_OFFSET_LENH];
+            ptrFrmLen16bit[0] = _ZBfrmBufferRX[ZB_FRM_OFFSET_LENL];
+
+	    // check Z frame length and ignore frames not matching our SmartHome message frame length
+	    if(ZB_RX_FRM_LEN == ZBfrmLen16bit)
+	    {
+	        // read remainder of frame into buffer, including the checksum which is not included in frame length size
+	        //Serial.readBytes( _ZBfrmBufferRX[ZB_FRM_OFFSET_FTYPE], (ZBfrmLen16bit+1) );
+	        Serial.readBytes( ptrZBbufFrmType, (ZBfrmLen16bit+1) );
+
+                //while (Serial.available() == 0);  // wait for Zigbee Frame checksum
+                ////ZB_frm_byte = Serial.read();
+                //_ZBfrmBufferRX[ZB_FRM_OFFSET_RX_CHKSUM] = Serial.read();
+	   
+	        // debug put frame buffer content to serial monitor for viewing
+	        debugPrintZBframeBufRX();
+
+	        // pull data fields out of RX buffer into _myZBframeRX and SHmsgRX data structures
+	        //parseZBbufferRX();
+	    }
+	    
+	    // indicate not still receiving a ZB frame
             ZBinFrameRX = NO;
-
-            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter	    
-
-	    debugPrintZBframeRX();
 	}
-
-
-        if (YES == ZBinFrameRX)
-	{
-            _ZBfrmBufferRX[_ZBoffsetRXbuff] = ZB_frm_byte; //(uint8_t)0x7e;  // ZB Frame Delimiter	    
-            _ZBoffsetRXbuff += 1;
-	}
-
     }
 }
 
 
 // Copy the various data fields from the RX Zigbee frame buffer for use
-void SHzigbee::parseZBrcvBuffer(void)
+void SHzigbee::parseZBbufferRX(void)
 {
     // use some pointer to unsigned int 8 (byte) to access parts of larger datatypes a byte at a time during Zigbee frame receive
     uint8_t *ptrZBfrmLength           = (uint8_t *)&(_myZBframeRX.ZBfrmLength);
@@ -362,6 +376,9 @@ void SHzigbee::parseZBrcvBuffer(void)
     uint8_t *ptrSHsrcAddr16           = (uint8_t *)&(SHmsgRX.SHsrcID);  // Pointer into SHmsgRX received SmartHome message struct
 //    uint8_t ZBchksumFromSender = 0; // checksum sent to us for comparison
 
+     _myZBframeRX.ZBfrmChksum = 0; //new frame starts new checksum
+
+    _ZBfrmBufferRX[ZB_START_DELIMITER];
 #if 0
     while()
     {
@@ -672,7 +689,7 @@ void SHzigbee::parseZBrcvBuffer(void)
 
 
 // Send the Zigbee frame receive buffer to Serial port monitor for developer/debugging purposes
-void SHzigbee::debugPrintZBframeRX(void)
+void SHzigbee::debugPrintZBframeBufRX(void)
 {
     uint16_t i=0;
 

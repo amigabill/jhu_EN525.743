@@ -257,7 +257,7 @@ void loop()
 //    delay(80);  // experiment to see if ZB receive can work at all and investigate timing issues
     
 #if 1
-    if(inXbeeConfigMode == NO)
+    if(NO == inXbeeConfigMode)
     {
         // NOT in Xbee module config mode, so run the SmartHome program
         
@@ -268,7 +268,7 @@ void loop()
         // it would be nice to be able to read from serial based on interrupts, either from RXbuff content
         // or from a timer to get us back here frequently enough if there are long/slow chunks of code somewhere
         // to get lost in. I don't know how to do that in Arduino though.
-        if (mySHzigbee.newSHmsgRX == NO)
+        if (NO == mySHzigbee.newSHmsgRX)
         {
             //check for a new incoming frame data
             mySHzigbee.zbRcvAPIframe();
@@ -284,11 +284,13 @@ void loop()
             }
         }
 
+#if 0
         // check if have a SmartHome message waiting to be sent
-        if (mySHzigbee.newSHmsgTX == YES)
+        if (YES == mySHzigbee.newSHmsgTX)
         {
             // ?assemble? and transmit the frame
         }
+#endif
 
         for (nodeIDnum = 0; nodeIDnum < mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
         {
@@ -552,7 +554,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 
 #if 0
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX = TXmsgACKREQ(nodeInfoIndex);
-            if ( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX == SH_STATUS_SUCCESS )
+            if ( SH_STATUS_SUCCESS == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX )
             {
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
             }
@@ -567,7 +569,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 
         case SH_MSG_ST_CNFRM:  // RX
 #if 0        
-            if ( (mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX == YES) && (mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType == SH_MSG_TYPE_CONFIRM) && (mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID) )
+            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CONFIRM == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) && (mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID) )
             {
                 // TODO - going to keep it this way? - move to extractRXpayload? - keep this way for now
                 captureRXmsg(nodeInfoIndex);
@@ -755,7 +757,7 @@ void debugPrintRxBuffer(void)
 // change value to LED on pin 13, to turn it on or turn it off
 void flipLEDpin(void)
 {
-  if (ledPinState == 0)
+  if (0 == ledPinState)
   {
     ledPinState = 1;
     digitalWrite(ledPin, HIGH);   // sets the LED on
@@ -783,17 +785,17 @@ void enablePCint(byte pin)
 // turn the load on or off. If off, turn on to the previous intensity level, not necessarily 100%-on
 void loadToggle(uint8_t nodeInfoIndex)
 {
-    if(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == LOAD_POWERED_ON)  // Load is currently powered ON (possibly dim/slow, but ON)
+    if(LOAD_POWERED_ON == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered)  // Load is currently powered ON (possibly dim/slow, but ON)
     {
         // Turn it off
-        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == LOAD_POWERED_OFF;
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = LOAD_POWERED_OFF;
 //        EEPROM.update(UNO_EEPROM_OFFSET_BS_POWERED, PIN_LED_OFF);
         digitalWrite(PIN_CTRL_LIGHT, PIN_LED_OFF);
     }
     else  // Load is currently powered full-OFF
     {
         // Turn it ON (not necessarily full-ON, may be dimmed/slow intensity level, but not full-OFF
-        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == LOAD_POWERED_ON;
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = LOAD_POWERED_ON;
 //        EEPROM.update(UNO_EEPROM_OFFSET_BS_POWERED, PIN_LED_ON);
         digitalWrite(PIN_CTRL_LIGHT, PIN_LED_ON);
     }
@@ -820,7 +822,7 @@ void loadPowerON(uint8_t nodeInfoIndex)
 
     Serial.print("DEBUG - In loadPowerON()");    
 
-    if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == NO)
+    if(NO == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered)
     {
         tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
 
@@ -853,7 +855,7 @@ void loadPowerOFF(uint8_t nodeInfoIndex)
 {
     Serial.print("DEBUG - In loadPowerOFF()");    
 
-    if( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered == YES)
+    if(YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered)
     {
         mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
 //        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
@@ -1032,11 +1034,11 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
     else
 #else
         // check if debug Blue button
-        if( (digitalRead(PIN_CHANGE_LOAD) == PIN_BUTTON_DOWN) && (buttonDimmerPrev == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_CHANGE_LOAD)) && (PIN_BUTTON_UP == buttonDimmerPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_CHANGE_LOAD) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_CHANGE_LOAD))
             {
                 changeLoad(currentNodeInfoIndex);         
             }        
@@ -1054,11 +1056,11 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 
 #if 0  // Grey button toggles power to selected load
         // check if debug Grey button
-        if( (digitalRead(PIN_ON_OFF) == PIN_BUTTON_DOWN) && (buttonOnOffPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_ON_OFF)) && (PIN_BUTTON_UP == buttonOnOffPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_ON_OFF) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_ON_OFF))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
                 loadToggle(currentNodeInfoIndex);         
@@ -1066,11 +1068,11 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         }
 #else  // Grey button only turns power ON to load (not off for toggle)
         // check if debug Grey button
-        if( (digitalRead(PIN_ON) == PIN_BUTTON_DOWN) && (buttonOnPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_ON)) && (PIN_BUTTON_UP == buttonOnPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_ON) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_ON))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
                 loadPowerON(currentNodeInfoIndex);         
@@ -1080,22 +1082,22 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 
 #if 0  // Yellow button toggles Xbee module config mode on Arduino UART
         // check if debug Yellow button
-        if( (digitalRead(PIN_XBCONFIG) == PIN_BUTTON_DOWN) && (buttonXBconfigPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_XBCONFIG)) && (PIN_BUTTON_UP == buttonXBconfigPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_XBCONFIG) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_XBCONFIG))
             {
                 toggleXbeeConfigMode();          
             }
         }
 #else  // Yellow button turns off the current load (selected by another manual pushbutton during debug)
         // check if debug Yellow button
-        if( (digitalRead(PIN_OFF) == PIN_BUTTON_DOWN) && (buttonOffPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_OFF)) && (PIN_BUTTON_UP == buttonOffPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_OFF) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_OFF))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
                 loadPowerOFF(currentNodeInfoIndex);         
@@ -1105,22 +1107,22 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 
 
         // check if debug Green button
-        if( (digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN) && (buttonBrighterPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_BRIGHER)) && (PIN_BUTTON_UP == buttonBrighterPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_BRIGHER) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_BRIGHER))
             {
                 loadIncreaseIntensity(currentNodeInfoIndex);         
             }        
         }
 
         // check if debug Red button
-        if( (digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN) && (buttonDimmerPrev   == PIN_BUTTON_UP) )
+        if( (PIN_BUTTON_DOWN == digitalRead(PIN_DIMMER)) && (PIN_BUTTON_UP == buttonDimmerPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
             delay(DELAY_PUSHBTN_DELAY);
-            if(digitalRead(PIN_DIMMER) == PIN_BUTTON_DOWN)
+            if(PIN_BUTTON_DOWN == digitalRead(PIN_DIMMER))
             {
                 loadDecreaseIntensity(currentNodeInfoIndex);         
             }        
@@ -1140,7 +1142,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 // When Xbee config mode is NOT active, then the SmartHome software will run normally and make use of the Xbee module for communications.
 void toggleXbeeConfigMode(void)
 {
-    if(inXbeeConfigMode == NO)  // Xbee config mode is currently DISabled
+    if(NO == inXbeeConfigMode)  // Xbee config mode is currently DISabled
     {
         // ENable Xbee config mode
         inXbeeConfigMode = YES;  // enable Xbee module config mode, halt SmartHome program execution
