@@ -322,7 +322,7 @@ uint16_t getLoadNodeIDfromSD(uint16_t roomNum, uint8_t loadNum)
 
 
 // Get SmartHome Load Type value for this Wall Control unit from SD card
-uint16_t getLoadTypefromSD(uint16_t roomNum, uint8_t loadNum)
+uint8_t getLoadTypefromSD(uint16_t roomNum, uint8_t loadNum)
 {
     uint8_t tmpLoadType = NODEINFO_NODETYPE_LIGHT; //loads are not controls, and more loads will be lights than fans
     char loadNumFileName[16] = "/65535/255.BIN";  // default longest filename to make sure have enough chars in string

@@ -53,4 +53,20 @@ typedef struct
     volatile uint8_t   newSHmsgRX;             // YES if a SH message has been received, NO if not
 } SHnodeInfo, *prtSHnodeInfo;
 
+
+// Is the load on or off? (regardless of current intensity value, so that we can ON back to the same intensity as when we went to OFF)
+#define LOAD_POWERED_ON  HIGH //LOW //(uint8_t)0x01
+#define LOAD_POWERED_OFF LOW  //HIGH //(uint8_t)0x00
+
+// The various intensity (brightness/speed) levels
+#define LOAD_INTENSITY_MIN       (uint16_t)0          // this level value is full-off
+#define LOAD_INTENSITY_FULL_OFF  LOAD_INTENSITY_MIN   // this level value is full-off
+#define LOAD_INTENSITY_LOW       (uint16_t)1          // this level value is full-off
+#define LOAD_INTENSITY_MED_LOW   (uint16_t)2          // this level value is full-off
+#define LOAD_INTENSITY_MED       (uint16_t)3          // this level value is full-off
+#define LOAD_INTENSITY_MED_HIGH  (uint16_t)4          // this level value is full-off
+#define LOAD_INTENSITY_MAX       (uint16_t)5          // this level value is full-on
+#define LOAD_INTENSITY_FULL_ON   LOAD_INTENSITY_MAX   // this level value is full-on
+#define LOAD_INTENSITY_HIGH      LOAD_INTENSITY_MAX   // this level value is full-on
+
 #endif

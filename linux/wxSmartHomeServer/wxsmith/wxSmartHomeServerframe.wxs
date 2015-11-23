@@ -1,30 +1,149 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <wxsmith>
-    <object class="wxFrame" name="wxSmartHomeServerFrame">
-        <object class="wxMenuBar" variable="MenuBar1" member="no">
-            <object class="wxMenu" variable="Menu1" member="no">
-                <label>&amp;File</label>
-                <object class="wxMenuItem" name="idMenuQuit" variable="MenuItem1" member="no">
-                    <label>Quit</label>
-                    <accel>Alt-F4</accel>
-                    <help>Quit the application</help>
-                    <handler function="OnQuit" entry="EVT_MENU" />
-                </object>
-            </object>
-            <object class="wxMenu" variable="Menu2" member="no">
-                <label>Help</label>
-                <object class="wxMenuItem" name="idMenuAbout" variable="MenuItem2" member="no">
-                    <label>About</label>
-                    <accel>F1</accel>
-                    <help>Show info about this application</help>
-                    <handler function="OnAbout" entry="EVT_MENU" />
-                </object>
-            </object>
-        </object>
-        <object class="wxStatusBar" name="ID_STATUSBAR1" variable="StatusBar1" member="yes">
-            <fields>1</fields>
-            <widths>-1</widths>
-            <styles>wxSB_NORMAL</styles>
-        </object>
-    </object>
+	<object class="wxFrame" name="wxSmartHomeServerFrame">
+		<id_arg>0</id_arg>
+		<object class="wxBoxSizer" variable="BoxSizer1" member="no">
+			<object class="sizeritem">
+				<object class="wxPanel" name="ID_PANEL1" variable="shPanel1" member="yes">
+					<size>840,480</size>
+					<bg>wxSYS_COLOUR_INFOBK</bg>
+					<style>wxNO_BORDER|wxTAB_TRAVERSAL</style>
+					<object class="wxTextCtrl" name="ID_TEXTCTRL1" variable="TextCtrl1" member="yes">
+						<value>Text</value>
+						<pos>272,64</pos>
+						<size>560,368</size>
+						<maxsize>-1,-1</maxsize>
+						<style>wxTE_AUTO_SCROLL|wxTE_MULTILINE|wxTE_READONLY|wxTE_LEFT</style>
+					</object>
+					<object class="wxGauge" name="ID_GAUGE1" variable="shIntensityGauge" member="yes">
+						<value>30</value>
+						<pos>8,24</pos>
+						<size>28,172</size>
+						<style>wxGA_VERTICAL</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_UP" variable="shBMPbuttonUP" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP</bitmap>
+						<pos>64,16</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_FAV" variable="shBMPbuttonFAV" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP</bitmap>
+						<pos>48,80</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_DWN" variable="shBMPbuttonDWN" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP</bitmap>
+						<pos>64,152</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxStaticText" name="ID_STATICTEXT1" variable="StaticText1" member="yes">
+						<label>  SmartHome Event Log  </label>
+						<pos>280,16</pos>
+						<fg>wxSYS_COLOUR_HIGHLIGHTTEXT</fg>
+					</object>
+					<object class="wxStaticLine" name="ID_STATICLINE1" variable="StaticLine1" member="yes">
+						<pos>272,40</pos>
+						<size>560,16</size>
+						<fg>wxSYS_COLOUR_ACTIVECAPTION</fg>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_ON" variable="shBMPbuttonON" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp</bitmap>
+						<pos>152,16</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTONSH_OFF" variable="shBMPbuttonOFF" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP</bitmap>
+						<pos>152,112</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_RM_LFT" variable="shBMPbtnRoomLeft" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP</bitmap>
+						<pos>16,282</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_LD_LFT" variable="shBMPbtnLoadLeft" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP</bitmap>
+						<pos>16,386</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_RM_RT" variable="shBMPbtnRoomRight" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP</bitmap>
+						<pos>191,282</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+						<handler function="OnshBMPbtnRoomRightClick" entry="EVT_BUTTON" />
+					</object>
+					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_LD_RT" variable="shBMPbtnLoadRight" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP</bitmap>
+						<pos>191,386</pos>
+						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
+					</object>
+					<object class="wxCheckBox" name="ID_CHECKBOX_SH_HM1" variable="shCheckBoxIsHome1" member="yes">
+						<label>Home 1</label>
+						<pos>296,448</pos>
+					</object>
+					<object class="wxCheckBox" name="ID_CHECKBOX_SH_HM2" variable="shCheckBoxIsHome2" member="yes">
+						<label>Home 2</label>
+						<pos>392,448</pos>
+					</object>
+					<object class="wxStaticText" name="ID_STATICTEXT_SH_RM_NAME" variable="shStaticTextRoomName" member="yes">
+						<label>Bedroom 1</label>
+						<pos>80,304</pos>
+						<size>120,20</size>
+						<fg>wxSYS_COLOUR_HIGHLIGHTTEXT</fg>
+						<style>wxALIGN_CENTRE</style>
+					</object>
+					<object class="wxStaticText" name="ID_STATICTEXT_SH_LD_NAME" variable="shStaticTextLoadName" member="yes">
+						<label>Fan 1</label>
+						<pos>80,410</pos>
+						<size>120,20</size>
+						<fg>wxSYS_COLOUR_HIGHLIGHTTEXT</fg>
+						<style>wxALIGN_CENTRE</style>
+					</object>
+					<object class="wxStaticBitmap" name="ID_STATICBITMAP1" variable="StaticBitmap1" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
+						<pos>80,288</pos>
+					</object>
+					<object class="wxStaticBitmap" name="ID_STATICBITMAP2" variable="StaticBitmap2" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
+						<pos>80,336</pos>
+					</object>
+					<object class="wxStaticBitmap" name="ID_STATICBITMAP3" variable="StaticBitmap3" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
+						<pos>80,392</pos>
+					</object>
+					<object class="wxStaticBitmap" name="ID_STATICBITMAP4" variable="StaticBitmap4" member="yes">
+						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
+						<pos>80,440</pos>
+					</object>
+				</object>
+				<flag>wxALL|wxEXPAND|wxFIXED_MINSIZE|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL</flag>
+				<option>1</option>
+			</object>
+		</object>
+		<object class="wxMenuBar" variable="MenuBar1" member="no">
+			<object class="wxMenu" variable="Menu1" member="no">
+				<label>&amp;File</label>
+				<object class="wxMenuItem" name="idMenuQuit" variable="MenuItem1" member="no">
+					<label>Quit</label>
+					<accel>Alt-F4</accel>
+					<help>Quit the application</help>
+					<handler function="OnQuit" entry="EVT_MENU" />
+				</object>
+			</object>
+			<object class="wxMenu" variable="Menu2" member="no">
+				<label>Help</label>
+				<object class="wxMenuItem" name="idMenuAbout" variable="MenuItem2" member="no">
+					<label>About</label>
+					<accel>F1</accel>
+					<help>Show info about this application</help>
+					<handler function="OnAbout" entry="EVT_MENU" />
+				</object>
+			</object>
+		</object>
+		<object class="wxStatusBar" name="ID_STATUSBAR1" variable="StatusBar1" member="yes">
+			<fields>1</fields>
+			<widths>-1</widths>
+			<styles>wxSB_NORMAL</styles>
+		</object>
+	</object>
 </wxsmith>

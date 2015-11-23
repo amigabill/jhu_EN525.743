@@ -12,6 +12,9 @@
 
 #include <wx/app.h>
 
+
+#define SH_SERV_APP_NAME "wxSmartHomeServer"
+
 class wxSmartHomeServerApp : public wxApp
 {
     public:
