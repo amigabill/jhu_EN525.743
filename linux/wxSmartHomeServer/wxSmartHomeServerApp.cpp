@@ -78,56 +78,53 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
 {
     #define SH_LOG_FILE_MAX_LINE_LENGTH 200
 
-//    wxTextFile shLogFile;
     size_t i=0, shLogFileumLinesCurr=0;
-//    wxString shLogFileTextLine = wxFile(0x00, SH_LOG_FILE_MAX_LINE_LENGTH);
     wxFile shLogFile(shLogFileName, wxFile::read);
-//    wxString thisChar( (wxChar)0x00, 1 );
     wxUint8 thisChar[1];
 
 
+//    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
+
     if( !shLogFile.IsOpened() )
     {
+        // could not open the file for some reason
         return false;
     }
-
-
-
-// TODO - change from wxTextFile to wxFile or wxFFile to save memory needs
-
-//    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
 
 
     wxFileOffset shLogFileLength = shLogFile.Length();
     if( shLogFileLength == wxInvalidOffset )
     {
+        // file is of some invalid size for some reason
         return false;
     }
 
     if(shLogFileLength == shLogFileLengthPrev)
     {
-        // no change in file size, assume no change to log since last check
+        // no change in file size, assume no change to log since last check.
+        // This is not a problem, just nothing to do this time around.
         return true;
     }
 
 
-    //
+    // Clear out the GUI log fie text area before refreshing the text content,
+    // in order to avoid duplicated sets before the final new line(s) at the bottom
+    Frame->TextCtrl1->Clear();
+
+
+    // Read a character at a time to build up a text line,
+    // then send the line of text to the GUI log text area,
+    // and check for any additional text lines to display.
     while( (!shLogFile.Eof()) && (shLogFile.Tell() != wxInvalidOffset) )
     {
-//        if( shLogFile.Tell() == wxInvalidOffset )
-//        {
-//            return false;
-//        }
-
+        // create a new text line string each iteration, initialize full of NULL characters
         wxString shLogFileTextLine( (wxChar)0x00, SH_LOG_FILE_MAX_LINE_LENGTH );
 
         i=0;
         do
         {
-#if 1
             // read one char from file and add to current text line string
             shLogFile.Read( thisChar, 1 );
-#endif
             shLogFileTextLine[i] = (wxChar)thisChar[0];
 
             i++;
@@ -137,34 +134,11 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
         Frame->TextCtrl1->AppendText(shLogFileTextLine);
     }
 
+    // save current log file length for comparison next time around
     shLogFileLengthPrev = shLogFileLength;
-    //
 
-return true;
-
-#if 0
-    if(shLogFile.Open(shLogFileName))
-    {
-        shLogFileumLinesCurr = i<shLogFile.GetLineCount();
-
-        // check if the log file has changed since last time we checked, and refresh GUI if it did change
-        if(shLogFileumLinesCurr != shLogFileumLinesPrev)
-        {
-            // Clear out the GUI wxTextCntrl area to be refreshed
-            Frame->TextCtrl1->Clear();  // TODO rename TextCtrl1 to something more descriptive TODO
-
-            // Append each line of the log file to the GUI wxTextCntrl area
-            for(i=0; shLogFileumLinesCurr; i++)
-            {
-                shLogFileTextLine = shLogFile[i];
-                shLogFileTextLine = shLogFileTextLine + "\n";
-                Frame->TextCtrl1->AppendText(shLogFileTextLine);
-            }
-        }
-    }
-
-    shLogFileumLinesPrev = shLogFileumLinesCurr;
-#endif
+    // all good at this point
+    return true;
 }
 
 
