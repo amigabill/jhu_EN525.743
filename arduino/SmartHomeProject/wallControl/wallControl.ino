@@ -1,7 +1,52 @@
+/*
+ *  NAME: wallControl
+ *  DESCRIPTION: Arduino code for an Mega 2650 type Arduino board, in the SmartHome lighting and ceiling fan control system for
+ *               Bill Toner's Fall 2015 Embedded Systems project EN.525.743 at Johns Hopkins University, Dorsey Center
+ *               with Professor Houser.
+ *
+ *               While Arduino preference is to do things in a very C++ style, I am a C programmer, and will
+ *               write some of this software in more of a C style, due to scheduling concerns of working in
+ *               a style that is slightly foreign to me.
+ *
+ *               Arduino Mega wall controls would ultimately be direct replacements for standard wall switch controls
+ *               such as SPST ON/OFF toggle switches, which are commonly used in home and commercial electrical systems.
+ *               This is a concept prototype, and so does not directly fit into a standard gang electrical box or
+ *               wallplate hole.
+ *
+ *               This wallControl unit will communicate with other portions of the SmartHome system via
+ *               Zigbee wireless messages, using the Zigbee API mode TX Request and RX Received frames.
+ *               Other Zigbee API frame types will be ignored. All Zigbee messages will be sent to broadcast address
+ *               so that all other nodes will receive the same message.
+ *
+ *               The wallControl units send a SmartHome command message, the target node receiving that message
+ *               will acknowledge receipt of the command and ask for confirmation that the addressed sender
+ *               did indeed send it. This sender will then confirm or deny that it made the command request.
+ *               Finally, the recipient target load node will indicate completion of the command,
+ *               along with a status to say it was done or was ignored. The command would be ignored if the
+ *               addressed sender denied that it sent the command.
+ *
+ *               The Zigbee message payload contains the SmartHome message, which is of a rigidly defined structure,
+ *               and is made up of 12 bytes.
+ *
+ *               Byte 1 | Offset 0  | Description ...
+ *               Byte 2 | Offset 1  |
+ *               TODO - complete message description
+ *
+ *               TODO - complete commands descriptions
+ *
+ *               TODO -
+ *
+ *               NOTES:
+ *
+ *               Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
+ *
+ */
+
+
 // Include Arduino standard libraries
 #include "Arduino.h"
 
-// Because Unos and Dues have different sizes for int
+// Use standardized int types because Unos and Megas have different sizes for "int"
 #include "stdint.h"
 
 #include <Wire.h>
@@ -105,7 +150,7 @@ uint8_t *ptrThisWCnodeID = (uint8_t *)&thisWCnodeID;
 void setup() {
     // put your setup code here, to run once:
     uint8_t tmpR8 = 0;
-    
+
     Serial.begin(9600);
 
 
@@ -117,11 +162,11 @@ void setup() {
 
 
     // Enable LCD/TFT Touchscreen touch sensor
-    if (!ts.begin()) { 
+    if (!ts.begin()) {
         Serial.println("Unable to start touchscreen.");
-    } 
-    else { 
-        Serial.println("Touchscreen started."); 
+    }
+    else {
+        Serial.println("Touchscreen started.");
         ts.writeRegister8(STMPE_INT_STA, 0xFF); // reset all ints
     }
 
@@ -140,13 +185,13 @@ void setup() {
         thisWCnodeID = getThisWCnodeIDfromSD();
         Serial.print("This WC node has SH nodeID=");
         Serial.println(thisWCnodeID, HEX);
-        
+
         char roomNumDirName[7] = "0";
         char loadNumFileName[16] = "/1/2.BIN";
 
         volatile uint16_t tmpRoomNum = 0;
             volatile uint16_t tmpLoadNum = 0;
-            
+
         sprintf(roomNumDirName, "/%d", tmpRoomNum);
         while( (tmpRoomNum <= 65535) && SD.exists(roomNumDirName) )
         {
@@ -158,13 +203,13 @@ void setup() {
             Serial.println(tmpRoomNum, DEC);
             tmpRoomNum += 1;
             sprintf(roomNumDirName, "/%d", tmpRoomNum);
-        }        
-          
+        }
+
     } // else SD.begin
 
-     
+
     //bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, SH_WALLCONTROL_LCD_BACKDROP_X, SH_WALLCONTROL_LCD_BACKDROP_Y);
-//    bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);   
+//    bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);
     lcdDrawBackDrop();
 //    lcdDrawRoomBtn(0);
 //    lcdDrawLoadBtn(0, 0);
@@ -184,13 +229,13 @@ void setup() {
 
     // Select the default room ID as our current room
     selectRoom(DEFAULT_ROOM_NUM);
-    
+
 #if 0
     // Attempt to transmit a TX frame for debugging
 //    mySHzigbee.initXmitAPIframe(); // init is now done in the SHzigbee class constructor
 
     // Fill TX frame payload (SH message) with current message values
-    mySHzigbee.prepareTXmsg( 
+    mySHzigbee.prepareTXmsg(
                   (uint16_t)0xabcd,    // SH dest ID
                   (uint16_t)0xf00d,    // SH src ID
                   SH_MSG_TYPE_CMD_REQ, // SH msg Type
@@ -214,7 +259,7 @@ void setup() {
 // Look on SD card for number of loads in the given room.
 // Each room on SD card is a directory with same name as its room number.
 // Each load on SD is a few files with names of load number DOT extension, such as 0.BIN or 1.BIN etc.
-// Cycle through the numbers, starting with first load number of 0 and counting up, 
+// Cycle through the numbers, starting with first load number of 0 and counting up,
 // until an N.BIN file is not found for that eval load number N.
 uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
 {
@@ -226,8 +271,8 @@ uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
     {
         return(ROOM_NO_LOADS);
     }
-    
-    
+
+
     // Get last load number for the default room
     sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, tmpLoadNum);
 
@@ -240,9 +285,9 @@ uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
         Serial.print(" / ");
         Serial.print(tmpLoadNum, DEC);
         Serial.println("");
-            
+
         lastLoadNumInRoom = tmpLoadNum;
-        tmpLoadNum += 1;            
+        tmpLoadNum += 1;
         sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, tmpLoadNum);
     }
 
@@ -255,7 +300,7 @@ uint16_t getNumLoadsInRoomFromSD(uint16_t roomNum)
     Serial.println("");
 
     // first is number 0, so add 1 to the last number detected for how many there are
-    return(lastLoadNumInRoom+1);  
+    return(lastLoadNumInRoom+1);
 }
 
 
@@ -264,7 +309,7 @@ uint16_t getThisWCnodeIDfromSD(void)
 {
     uint16_t tmpWCloadID = 0;
     uint8_t *ptrTmpWCloadID = (uint8_t *)&tmpWCloadID;
-    
+
     #define myIDfilename "/ME.BIN"
     if( SD.exists(myIDfilename) )
     {
@@ -280,7 +325,7 @@ uint16_t getThisWCnodeIDfromSD(void)
             ptrTmpWCloadID[0] = (uint8_t)myIDfile.read();
         }
         myIDfile.close();
-        
+
 
         Serial.print("SmartHome Node ID for this control unit = ");
         //Serial.println(thisWCnodeID, HEX);
@@ -295,7 +340,7 @@ uint16_t getThisWCnodeIDfromSD(void)
 // Get SmartHome ID value for this Wall Control unit from SD card
 uint16_t getLoadNodeIDfromSD(uint16_t roomNum, uint8_t loadNum)
 {
-    uint16_t tmpLoadID = LOAD_FIRST; 
+    uint16_t tmpLoadID = LOAD_FIRST;
     uint8_t *prtTmpLoadID = (uint8_t *)&tmpLoadID;
     char loadNumFileName[16] = "/65535/255.BIN";  // default longest filename to make sure have enough chars in string
 
@@ -312,7 +357,7 @@ uint16_t getLoadNodeIDfromSD(uint16_t roomNum, uint8_t loadNum)
             prtTmpLoadID[0] = (uint8_t)loadIDfile.read();
         }
         loadIDfile.close();
-        
+
         Serial.print("SmartHome Node ID for this load unit = ");
         Serial.println(tmpLoadID, HEX);
     }
@@ -344,7 +389,7 @@ uint8_t getLoadTypefromSD(uint16_t roomNum, uint8_t loadNum)
             tmpLoadType = (uint8_t)loadIDfile.read();  // skip over load ID L byte here
         }
         loadIDfile.close();
-        
+
         Serial.print("SmartHome Node type for this load unit = ");
         Serial.println(tmpLoadType, HEX);
     }
@@ -358,7 +403,7 @@ boolean loadFileExists(uint16_t roomNum, uint8_t loadNum)
 {
     char loadNumFileName[16] = "/65335/255.BIN";
 
-    
+
     //sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, roomNum);
     sprintf(loadNumFileName, "%d/%d.BIN", roomNum, roomNum);
 
@@ -402,10 +447,10 @@ void loop() {
         if( nowMillis >= nextMillis )
         {
             //Serial.println("Processing the TS event");
-            
+
             prevMillis = nowMillis;
-            nextMillis = nowMillis + TS_DEBOUNCE_MILLIS;         
-        
+            nextMillis = nowMillis + TS_DEBOUNCE_MILLIS;
+
             // respond to touchscreen input
 
             // Scale from ~0->4000 to tft.width using the calibration #'s
@@ -423,7 +468,7 @@ void loop() {
             Serial.print(" ; y=");
             Serial.println(y, DEC);
 #endif
-        
+
             // Figure out which LCD GUI button was pressed and respond accodringly
             SHdoTouchButton(x, y);
         }
@@ -456,7 +501,7 @@ uint16_t curLoadID = 0;
 // Figure out which LCD GUI button was pressed and respond accodringly
 void SHdoTouchButton(uint16_t x, uint16_t y)
 {
-    Serial.print("Touch Button ");  
+    Serial.print("Touch Button ");
 
     // button locations on-screen
     // FAV 45:55   ; 125:107
@@ -467,7 +512,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 
     #define NUM_CMD_REPEATS_SAVE_FAV 2
     #define FAKE_FAV_VALUE_DEBUG 4
-    
+
 
     // save current load ID and SH command for comparison next time through to detect repeats
     prevLoadID  = curLoadID;
@@ -479,7 +524,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
     {
         if(y>10 && y<70)  // ON button
         {
-            Serial.println("ON");             
+            Serial.println("ON");
 
             if(  SH_POWERED_OFF == curLoadNodeInfo.SHthisNodeIsPowered )
             {
@@ -508,7 +553,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         }
         else if(y>100 && y<160)  // OFF button
         {
-            Serial.println("OFF"); 
+            Serial.println("OFF");
 
             if(  SH_POWERED_ON == curLoadNodeInfo.SHthisNodeIsPowered )
             {
@@ -537,30 +582,30 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         }
         if(y>180 && y<220)  // Room -> button (select next Room)
         {
-            Serial.println("Room ->"); 
+            Serial.println("Room ->");
             changeRoom(ROOM_CHANGE_ROTR);
         }
         else if(y>240 && y<290)  // Load -> button (select next Load)
         {
-            Serial.println("Load ->"); 
+            Serial.println("Load ->");
             changeLoad(LOAD_CHANGE_ROTR);
         }
     }
     else if( (x>=10 && x<100) && (y>180 && y<220) )  // Room <- button (select previous Room)
     {
-            Serial.println("Room <-"); 
+            Serial.println("Room <-");
             changeRoom(ROOM_CHANGE_ROTL);
     }
     else if( (x>=10 && x<100) && (y>240 && y<290) )  // Load <- button (select previous Load)
     {
-            Serial.println("Load <-"); 
+            Serial.println("Load <-");
             changeLoad(LOAD_CHANGE_ROTL);
     }
-    else if( x>=45 && x<125) 
+    else if( x>=45 && x<125)
     {
         if(y>10 && y<45)  // Up-Arrow button (increase load intensity)
         {
-            Serial.println("Increase");             
+            Serial.println("Increase");
 
             if( 5 > (curLoadNodeInfo.SHthisNodeLevelCurrent) )
             {
@@ -594,7 +639,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         }
         else if(y>60 && y<110)  // FAV button (favorite intensity value for this load)
         {
-            Serial.println("FAV"); 
+            Serial.println("FAV");
 
             curLoadNodeInfo.SHthisNodeIsPowered = SH_POWERED_ON;
 
@@ -634,7 +679,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
         }
         else if(y>125 && y<160)  // Down-Arrow button (decrease load intensity)
         {
-            Serial.println("Decrease"); 
+            Serial.println("Decrease");
 
             if( 0 < (curLoadNodeInfo.SHthisNodeLevelCurrent) ) //&& ( SH_POWERED_ON == curLoadNodeInfo.SHthisNodeIsPowered) )
             {
@@ -675,7 +720,7 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 //                curLoadNodeInfo.SHthisNodeMsg.SHstatusL = SH_POWERED_OFF;
             }
         }
-    }    
+    }
 
     prevSHcmd = curLoadNodeInfo.SHthisNodeMsg.SHcommand;
 
@@ -705,7 +750,7 @@ uint16_t getLoadIDfromSD(uint16_t roomNum, uint8_t loadNum)
     tmpLoadID = SH_LOAD_ID_ROOM0_LOAD0 ;
 
     sprintf(loadNumFileName, "/%d/%d.BIN", roomNum, loadNum);
-    
+
     if( SD.exists(loadNumFileName) )
     {
         File loadIDfile = SD.open(loadNumFileName, FILE_READ);
@@ -718,15 +763,15 @@ uint16_t getLoadIDfromSD(uint16_t roomNum, uint8_t loadNum)
             ptrTmpLoadID[0] = (uint8_t)loadIDfile.read();
         }
         loadIDfile.close();
-        
+
         Serial.print("SmartHome Node ID for Room ");
         Serial.print(roomNum, DEC);
         Serial.print(" and Load ");
         Serial.print(loadNum, DEC);
         Serial.print(" is ");
-        Serial.println(tmpLoadID, HEX);        
+        Serial.println(tmpLoadID, HEX);
     }
-    
+
     return(tmpLoadID);
 }
 
@@ -739,13 +784,13 @@ uint8_t getCurLvlForLoad(uint16_t loadID)
 }
 
 
-// Draw the LCD GUI backdrop image, which makes up most of the screen. 
+// Draw the LCD GUI backdrop image, which makes up most of the screen.
 // Other image objects are painted over top of this.
 void lcdDrawBackDrop(void)
 {
     //#define SH_WALLCONTROL_LCD_BACKDROP_FILE "/IMAGES/BACKDROP.BMP"
     #define SH_WALLCONTROL_LCD_BACKDROP_FILE "/BCKDRP24.BMP"
-  
+
     //bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, SH_WALLCONTROL_LCD_BACKDROP_X, SH_WALLCONTROL_LCD_BACKDROP_Y);
     bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);
 }
@@ -769,7 +814,7 @@ void lcdDrawLvlIndBar(void)
     Serial.print(" using filename ");
     Serial.println(FILENAME_LVL_IND_BAR);
     #endif
-    
+
 //    bmpDraw(FILENAME_LVL_IND_BAR, 118, 12, 240, 320);  // for about center of horizontal dimension
     bmpDraw(FILENAME_LVL_IND_BAR, 0, 12, 240, 320);      // for left side of horizontal dimension
 }
@@ -777,13 +822,13 @@ void lcdDrawLvlIndBar(void)
 
 // Draw the load level setting indicator bob graphic to screen.
 // at an appropriate coordinate location for the given level.
-// This will redraw the level indicator bar to clear the 
+// This will redraw the level indicator bar to clear the
 // previous bob position.
 void lcdDrawLvlIndicator(uint8_t myLevel)
 {
     // Redraw the Level indicator bar to clear out the current/previous level drawing position
     lcdDrawLvlIndBar();
-    
+
     #define FILENAME_LVL_IND "/LVLIND.BMP"
 
     #if 0
@@ -797,19 +842,19 @@ void lcdDrawLvlIndicator(uint8_t myLevel)
             bmpDraw(FILENAME_LVL_IND, 0, 17, 240, 320);
             break;
 
-        case (uint8_t)4: 
+        case (uint8_t)4:
             bmpDraw(FILENAME_LVL_IND, 0, 44, 240, 320);
             break;
 
-        case (uint8_t)3: 
+        case (uint8_t)3:
             bmpDraw(FILENAME_LVL_IND, 0, 70, 240, 320);
             break;
 
-        case (uint8_t)2: 
+        case (uint8_t)2:
             bmpDraw(FILENAME_LVL_IND, 0, 96, 240, 320);
             break;
 
-        case (uint8_t)1: 
+        case (uint8_t)1:
             bmpDraw(FILENAME_LVL_IND, 0, 123, 240, 320);
             break;
 
@@ -820,7 +865,7 @@ void lcdDrawLvlIndicator(uint8_t myLevel)
         default:
             // Do nothing
             break;
-    }        
+    }
 }
 
 
@@ -838,7 +883,7 @@ void lcdDrawRoomBtn(uint16_t roomNum)
     Serial.print(roomNum, DEC);
     Serial.print(" using filename ");
     Serial.println(btnFileName);
-    #endif    
+    #endif
 
     bmpDraw(btnFileName, 0, 191, 240, 320);
 }
@@ -856,7 +901,7 @@ void lcdDrawLoadBtn(uint16_t roomNum, uint8_t loadNum)
     Serial.print(" using filename ");
     Serial.println(btnFileName);
     #endif
-    
+
     bmpDraw(btnFileName, 0, 256, 240, 320);
 }
 
@@ -884,7 +929,7 @@ void lcdDrawLoadBtn(uint16_t roomNum, uint8_t loadNum)
   Written by Limor Fried/Ladyada for Adafruit Industries.
   MIT license, all text above must be included in any redistribution
  ****************************************************/
- 
+
 // This function opens a Windows Bitmap (BMP) file and
 // displays it at the given coordinates.  It's sped up
 // by reading many pixels worth of data at a time
@@ -898,11 +943,11 @@ void lcdDrawLoadBtn(uint16_t roomNum, uint8_t loadNum)
 // what I tried to do for x2 and y2 didn't work, and renamed tose to tftW and tftH
 // and better code based on those works better.
 
-// This "library" function does NOT work well if x1 != 0, so I redrew my 
+// This "library" function does NOT work well if x1 != 0, so I redrew my
 // initial graphics to rearange buttons on screen, so that the level indicator
 // can now be drawn at left side, to get x1=0, so that redrawign that works OK.
 
-// Bill Toner - I added this, but interestingly, if DEBUG_BMP_DRAW is commented out/disabled, then no picture appears on the LCD screen. 
+// Bill Toner - I added this, but interestingly, if DEBUG_BMP_DRAW is commented out/disabled, then no picture appears on the LCD screen.
 // So please UNcomment this always, unless corrected. Seemed like a nice addition as I get a lot of Serial output.
 #define DEBUG_BMP_DRAW  // UNcomment if want debug strings sent to Serial Monitor, comment out if do not want
 
@@ -931,13 +976,13 @@ void bmpDraw(char *filename, uint16_t x1, uint16_t y1, uint16_t tftW, uint16_t t
       Serial.print(filename);
       Serial.println('\'');
   #endif
-  
+
   // Open requested file on SD card
   if ((bmpFile = SD.open(filename)) == NULL) {
     #ifdef DEBUG_BMP_DRAW
         Serial.print(F("File not found"));
     #endif
-    
+
     return;
   }
 
@@ -946,19 +991,19 @@ void bmpDraw(char *filename, uint16_t x1, uint16_t y1, uint16_t tftW, uint16_t t
     #ifdef DEBUG_BMP_DRAW
         Serial.print(F("File size: ")); Serial.println(read32(bmpFile));
     #endif
-    
+
     (void)read32(bmpFile); // Read & ignore creator bytes
     bmpImageoffset = read32(bmpFile); // Start of image data
 
     #ifdef DEBUG_BMP_DRAW
         Serial.print(F("Image Offset: ")); Serial.println(bmpImageoffset, DEC);
     #endif
-    
+
     // Read DIB header
     #ifdef DEBUG_BMP_DRAW
         Serial.print(F("Header size: ")); Serial.println(read32(bmpFile));
     #endif
-    
+
     bmpWidth  = read32(bmpFile);
     bmpHeight = read32(bmpFile);
     if(read16(bmpFile) == 1) { // # planes -- must be '1'
@@ -967,7 +1012,7 @@ void bmpDraw(char *filename, uint16_t x1, uint16_t y1, uint16_t tftW, uint16_t t
       #ifdef DEBUG_BMP_DRAW
           Serial.print(F("Bit Depth: ")); Serial.println(bmpDepth);
       #endif
-      
+
       if((bmpDepth == 24) && (read32(bmpFile) == 0)) { // 0 = uncompressed
 
         goodBmp = true; // Supported BMP format -- proceed!
@@ -978,7 +1023,7 @@ void bmpDraw(char *filename, uint16_t x1, uint16_t y1, uint16_t tftW, uint16_t t
             Serial.print('x');
             Serial.println(bmpHeight);
         #endif
-        
+
         // BMP rows are padded (if needed) to 4-byte boundary
         rowSize = (bmpWidth * 3 + 3) & ~3;
 
@@ -1034,19 +1079,19 @@ void bmpDraw(char *filename, uint16_t x1, uint16_t y1, uint16_t tftW, uint16_t t
             tft.pushColor(tft.color565(r,g,b));
           } // end pixel
         } // end scanline
-        
+
         #ifdef DEBUG_BMP_DRAW
             Serial.print(F("Loaded in "));
             Serial.print(millis() - startTime);
             Serial.println(" ms");
         #endif
-        
+
       } // end goodBmp
     }
   }
 
   bmpFile.close();
-  
+
   #ifdef DEBUG_BMP_DRAW
       if(!goodBmp) Serial.println(F("BMP format not recognized."));
   #endif
@@ -1087,7 +1132,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
     volatile uint8_t   SHmsgCmd;
     volatile uint8_t   SHmsgStatus;
 
-    
+
     // update to previous iteration's next state
     curLoadNodeInfo.SHmsgCurrentState = curLoadNodeInfo.SHmsgNextState;
 
@@ -1117,9 +1162,9 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
               Serial.print("    Sending a SH_MSG_TYPE_CMD_REQ to load ID ");
               //Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
               Serial.println();
-              
+
                 // Prepare and Send the appropriate SmartHome command message via Zigbee
-                mySHzigbee.prepareTXmsg( 
+                mySHzigbee.prepareTXmsg(
                     curLoadNodeInfo.SHthisNodeID,              // DestID is the load target that this WC node wants to control
                     thisWCnodeID,                              // Src ID is this node
                     SH_MSG_TYPE_CMD_REQ,                       // MsgType
@@ -1142,7 +1187,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
             else
             {
                 // nothing to do at this time
-                curLoadNodeInfo.newSHmsgTX = NO; 
+                curLoadNodeInfo.newSHmsgTX = NO;
                 curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
             }
             break;
@@ -1163,13 +1208,13 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                 curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
             }
 #endif
-            curLoadNodeInfo.newSHmsgRX = NO;  
+            curLoadNodeInfo.newSHmsgRX = NO;
             curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
             break;
 
         case SH_MSG_ST_CNFRM:  // WC TX - tell other node if we initiated command request CMD_REQ to it or not
             Serial.println("    (Maybe) Sending a SH_MSG_ST_CNFRM");
-            curLoadNodeInfo.newSHmsgTX = NO;  
+            curLoadNodeInfo.newSHmsgTX = NO;
             curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
             break;
 
@@ -1190,7 +1235,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                         curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
 
                         // NO break here so we also get the Powered and LevelCurrent values below
-                    
+
                     case SH_CMD_LOAD_ON:
                     case SH_CMD_LOAD_OFF:
                     case SH_CMD_LOAD_TOGLPWR:
@@ -1199,7 +1244,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
 
                     case SH_CMD_LOAD_INC:
                     case SH_CMD_LOAD_DEC:
-                
+
                         if(SH_POWERED_ON == curLoadNodeInfo.SHthisNodeMsg.SHstatusL)
                         {
                             // lcd draw current intensity level to the status val returned in this message
@@ -1218,11 +1263,11 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                         break;
                 }
 
-                curLoadNodeInfo.newSHmsgRX = NO;  
+                curLoadNodeInfo.newSHmsgRX = NO;
 
                 // reset back to idle state
-                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;  
-                curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_IDLE;          
+                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
+                curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_IDLE;
             }
             break;
 
@@ -1238,7 +1283,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
 uint8_t TXmsgACKREQ(uint8_t nodeInfoIndex)
 {
 #if 0
-  prepareTXmsg( 
+  prepareTXmsg(
                 curLoadNodeInfo.SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
                 curLoadNodeInfo.SHthisNodeID,             // Src ID is this node
                 SH_MSG_TYPE_ACK_CREQ,                                                // MsgType
@@ -1277,14 +1322,14 @@ void initCurLoadNodeInfo(uint16_t roomNum, uint8_t loadNum)
     // make sure not ready to transmit a Zigbee frame yet, have not received a Zigbee frame yet
     curLoadNodeInfo.newSHmsgTX = NO;
     curLoadNodeInfo.newSHmsgRX = NO;
-    
+
     //// get load ID and type from local SD card
     curLoadNodeInfo.SHthisNodeID = getLoadNodeIDfromSD(roomNum, loadNum);
     curLoadNodeInfo.SHthisNodeLoc = roomNum;
 //    curLoadNodeInfo.SHothrNodeID = tmpLoadID; // ID of this Wall Control unit, as sender of SH Zigbee messages
     curLoadNodeInfo.SHthisNodeType = getLoadTypefromSD(roomNum, loadNum);
     curLoadNodeInfo.SHthisNodePin = 0;  // NodePin is only used it the load driving unit software, NOT used at Wall Control units software here
-    
+
     // initial values when booting with default load or changing to a different load
     curLoadNodeInfo.SHmsgStatus= SH_STATUS_SUCCESS;
 
@@ -1304,11 +1349,11 @@ void initCurLoadNodeInfo(uint16_t roomNum, uint8_t loadNum)
     curLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
     curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
 
-    
+
     //// get info from the load itself via Zigbee
     curLoadNodeInfo.SHmsgCurrentState = SH_MSG_TYPE_IDLE;
     curLoadNodeInfo.SHmsgNextState = SH_MSG_TYPE_IDLE;
-    
+
     curLoadNodeInfo.SHmsgCmd = SH_CMD_LOAD_READCRNT;    // Read current values from load, including level, powered, ?Favorite?
     curLoadNodeInfo.newSHmsgTX = YES;
 //    doWCnodeIDmsgSM();
@@ -1369,7 +1414,7 @@ void changeRoom(uint8_t changeDirection)
 
 void selectRoom(uint16_t roomNum)
 {
-    uint16_t tmpNumLoadsInRoom = 0;  
+    uint16_t tmpNumLoadsInRoom = 0;
 
     if( (roomNum >= 0) && (roomNum <= lastRoomNum) )
     {
@@ -1389,12 +1434,12 @@ void selectRoom(uint16_t roomNum)
         {
             // update room number
             currentRoomNum = roomNum;
-            curNumLoadsInRoom = tmpNumLoadsInRoom;        }      
+            curNumLoadsInRoom = tmpNumLoadsInRoom;        }
             lastLoadNumInRoom = curNumLoadsInRoom - 1;
             currentLoadNumInRoom = DEFAULT_LOAD_NUM;
-//            curLoadID = getLoadIDfromSD(roomNum, currentLoadNumInRoom);        
+//            curLoadID = getLoadIDfromSD(roomNum, currentLoadNumInRoom);
             curLoadNodeInfo.SHthisNodeType = getLoadTypefromSD(roomNum, currentLoadNumInRoom);
-            
+
             Serial.print("curNumLoadsInRoom = ");
             Serial.println(curNumLoadsInRoom, DEC);
 
@@ -1431,7 +1476,7 @@ void changeLoad(uint8_t changeDirection)
     if(curNumLoadsInRoom == 1)
     {
         // if only have one load in this room then no change from current load number
-        newLoad = currentLoadNumInRoom;  
+        newLoad = currentLoadNumInRoom;
     }
     else if(changeDirection == LOAD_CHANGE_ROTR)  // Rotate Right == Increment with wraparound back to 0
     {
@@ -1490,11 +1535,11 @@ void selectLoad(uint16_t loadNum)
         curSHcmdRepeats = 0;
 
         // Draw the new load button on wall control LCD screen
-        lcdDrawLoadBtn(currentRoomNum, loadNum);     
+        lcdDrawLoadBtn(currentRoomNum, loadNum);
 
         // Request current setting and powered state
         SHloadRequestCurrentIntensity(curLoadNodeInfo.SHthisNodeID);
-        
+
         Serial.print("Selecting room ");
         Serial.print(curLoadNodeInfo.SHthisNodeLoc, DEC);
         Serial.print(" / load ");
@@ -1508,7 +1553,7 @@ void selectLoad(uint16_t loadNum)
             case NODEINFO_NDOETYPE_FAN:
                 Serial.print("fan");
                 break;
-            default: 
+            default:
                 break;
         }
         Serial.print(" Load Node ID is ");
@@ -1528,10 +1573,10 @@ uint8_t SHloadRequestCurrentIntensity(uint16_t loadNodeID)
     curLoadNodeInfo.SHthisNodeID   = loadNodeID;
     curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_READCRNT;
 
-    // TODO 
+    // TODO
 //    doWCnodeIDmsgSM();
   return(2);
-  
+
     // current level is in the curLoadInfo struct at end of messaging conversation
     return(curLoadNodeInfo.SHthisNodeMsg.SHstatusVal);
 }
@@ -1542,10 +1587,10 @@ uint8_t SHloadRequestPoweredState(uint16_t loadNodeID)
     curLoadNodeInfo.SHthisNodeID   = loadNodeID;
     curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_READPWR;
 
-    // TODO 
+    // TODO
 //    doWCnodeIDmsgSM();
   return(SH_POWERED_ON);
-  
+
     // current level is in the curLoadInfo struct at end of messaging conversation
     return(curLoadNodeInfo.SHthisNodeMsg.SHstatusVal);
 }

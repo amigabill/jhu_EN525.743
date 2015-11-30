@@ -34,24 +34,32 @@
 #include "SmartHome_Zigbee.h"
 #include "SmartHome_NodeInfo.h"
 
-//#include shLinuxSerialPort.h
+#include "shLinuxSerialPort.h"
 
 
 class wxSmartHomeServerFrame: public wxFrame
 {
     public:
-        wxTextCtrl* TextCtrl1;
+        wxTextCtrl* shTextCtrlEvtlog;
 
         wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id = -1);
         virtual ~wxSmartHomeServerFrame();
 
     private:
 
+        const char* _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
+        const int   _SH_SERVER_SERIAL_BAUD_RATE = 9600;
+        const int   _SH_SERVER_SERIAL_CHAR_SIZE =  8;
+
         uint8_t     shCurrentIntensity;
         uint16_t    shThisNodeID = 0;
         uint8_t    *ptrThisNodeID = (uint8_t *)&shThisNodeID;
         uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan
         FILE       *FILEshEventsLog;
+
+        shSerialPort  shServerSerialPort = shSerialPort( _SH_SERVER_SERIAL_PORT_NAME );
+//        shSerialPort  shServerSerialPort = shSerialPort();
+
 
         // nodeInfo struct of the currently selected target load to be controlled
         SHnodeInfo  shCurrentLoadNodeInfo;
@@ -81,7 +89,7 @@ class wxSmartHomeServerFrame: public wxFrame
 
 
         //(*Identifiers(wxSmartHomeServerFrame)
-        static const long ID_TEXTCTRL1;
+        static const long ID_TEXTCTRL_SH_EVT_LOG;
         static const long ID_GAUGE_SH_LD;
         static const long ID_BITMAPBUTTON_SH_UP;
         static const long ID_BITMAPBUTTON_SH_FAV;

@@ -37,6 +37,8 @@
 		<Linker>
 			<Add option="`wx-config --libs`" />
 		</Linker>
+		<Unit filename="shLinuxSerialPort.cpp" />
+		<Unit filename="shLinuxSerialPort.h" />
 		<Unit filename="wxSmartHomeServerApp.cpp" />
 		<Unit filename="wxSmartHomeServerApp.h" />
 		<Unit filename="wxSmartHomeServerMain.cpp" />

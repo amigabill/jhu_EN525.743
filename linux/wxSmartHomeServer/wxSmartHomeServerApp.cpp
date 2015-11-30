@@ -43,6 +43,8 @@ bool wxSmartHomeServerApp::OnInit()
     	SetTopWindow(Frame);
     }
     //*)
+
+
     return wxsOK;
 
 }
@@ -109,7 +111,7 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
 
     // Clear out the GUI log fie text area before refreshing the text content,
     // in order to avoid duplicated sets before the final new line(s) at the bottom
-    Frame->TextCtrl1->Clear();
+    Frame->shTextCtrlEvtlog->Clear();
 
 
     // Read a character at a time to build up a text line,
@@ -131,7 +133,7 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
         } while( (thisChar[0] != '\n') && (i<SH_LOG_FILE_MAX_LINE_LENGTH) && (!shLogFile.Eof()) && (shLogFile.Tell() != wxInvalidOffset) );
         shLogFileTextLine[i] = (wxChar)0x00; // make sure to add NULL char at end of text line
 
-        Frame->TextCtrl1->AppendText(shLogFileTextLine);
+        Frame->shTextCtrlEvtlog->AppendText(shLogFileTextLine);
     }
 
     // save current log file length for comparison next time around

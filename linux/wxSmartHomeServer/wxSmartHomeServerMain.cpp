@@ -62,7 +62,7 @@ wxString wxbuildinfo(wxbuildinfoformat format)
 }
 
 //(*IdInit(wxSmartHomeServerFrame)
-const long wxSmartHomeServerFrame::ID_TEXTCTRL1 = wxNewId();
+const long wxSmartHomeServerFrame::ID_TEXTCTRL_SH_EVT_LOG = wxNewId();
 const long wxSmartHomeServerFrame::ID_GAUGE_SH_LD = wxNewId();
 const long wxSmartHomeServerFrame::ID_BITMAPBUTTON_SH_UP = wxNewId();
 const long wxSmartHomeServerFrame::ID_BITMAPBUTTON_SH_FAV = wxNewId();
@@ -125,10 +125,10 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     BoxSizer1 = new wxBoxSizer(wxHORIZONTAL);
     shPanel1 = new wxPanel(this, ID_PANEL1, wxDefaultPosition, wxSize(840,480), wxNO_BORDER|wxTAB_TRAVERSAL, _T("ID_PANEL1"));
     shPanel1->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-    TextCtrl1 = new wxTextCtrl(shPanel1, ID_TEXTCTRL1, _("Text"), wxPoint(272,64), wxSize(560,368), wxTE_AUTO_SCROLL|wxTE_MULTILINE|wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL1"));
-    TextCtrl1->SetMaxSize(wxSize(-1,-1));
-    TextCtrl1->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-    TextCtrl1->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
+    shTextCtrlEvtlog = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_EVT_LOG, _("Text"), wxPoint(272,64), wxSize(560,368), wxTE_AUTO_SCROLL|wxTE_MULTILINE|wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL_SH_EVT_LOG"));
+    shTextCtrlEvtlog->SetMaxSize(wxSize(-1,-1));
+    shTextCtrlEvtlog->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+    shTextCtrlEvtlog->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
     shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,24), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE_SH_LD"));
     shIntensityGauge->SetValue(30);
     shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
@@ -184,7 +184,14 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
 
 
 //    SHinitServerNodeInfo();
+    // initialize default load Node Info struct data
     SHinitLoadNodeInfo();
+
+    // start the serial port with SmartHome system Zigbee settings
+    shServerSerialPort.start(9600);
+
+    // test for debugging to see if serial is alive
+    //shServerSerialPort
 
     // open the SmartHome events log file for reading AND writing, create file if necessary
     #define FILENAME_SH_EVENTS_LOG "/home/smarthome/.wxSmartHome/shEvents.log"
@@ -229,27 +236,42 @@ void wxSmartHomeServerFrame::OnAbout(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('R');
+
     wxLogMessage( "Button Room Right" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('L');
+
     wxLogMessage( "Button Room Left" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('r');
+
     wxLogMessage( "Button Load Right" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('l');
+
     wxLogMessage( "Button Load Left" ) ;
 }
 
 
 void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('I');
+
     wxLogMessage( "Button Up Inc Intensity" ) ;
 
     if(shCurrentLoadNodeInfo.SHthisNodeIsPowered == NO)
@@ -285,6 +307,9 @@ void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('F');
+
     wxLogMessage( "Button FAVorite Intensity = %d", shCurrentLoadNodeInfo.SHthisNodeLevelFav ) ;
 
     shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = shCurrentLoadNodeInfo.SHthisNodeLevelFav;
@@ -303,6 +328,9 @@ void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('D');
+
     wxLogMessage( "Button Down Dec Intensity" ) ;
 
     if(shCurrentLoadNodeInfo.SHthisNodeLevelCurrent <= LOAD_INTENSITY_MIN)
@@ -331,6 +359,9 @@ void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 // Have an ON button event
 void wxSmartHomeServerFrame::OnshBMPbtnOnClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('1');
+
     wxLogMessage( "Button On" ) ;
 
     shCurrentLoadNodeInfo.SHthisNodeIsPowered = YES;
@@ -348,6 +379,9 @@ void wxSmartHomeServerFrame::OnshBMPbtnOnClick(wxCommandEvent& event)
 // Have an OFF button event
 void wxSmartHomeServerFrame::OnshBMPbtnOffClick(wxCommandEvent& event)
 {
+    // test for debugging to see if serial is alive
+    shServerSerialPort.txSend('0');
+
     wxLogMessage( "Button Off" ) ;
 
     shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO;

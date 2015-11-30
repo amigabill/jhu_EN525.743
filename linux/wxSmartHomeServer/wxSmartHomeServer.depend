@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1448514560 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
+1448598773 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
 	"wxSmartHomeServerApp.h"
 	"wxSmartHomeServerMain.h"
 	<wx/image.h>
@@ -584,7 +584,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/app.h
 
-1448485916 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
+1448691607 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
 	<wx/gauge.h>
 	<wx/bmpbuttn.h>
 	<wx/checkbox.h>
@@ -601,6 +601,7 @@
 	<stdint.h>
 	"SmartHome_Zigbee.h"
 	"SmartHome_NodeInfo.h"
+	"shLinuxSerialPort.h"
 
 1414317466 /usr/include/wx-3.0/wx/gauge.h
 	"wx/defs.h"
@@ -1117,7 +1118,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/checkbox.h
 
-1448483666 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
+1448692672 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
 	"wxSmartHomeServerMain.h"
 	"wx/defs.h"
 	"wx/wxprec.h"
@@ -1694,4 +1695,18 @@
 
 1414317467 /usr/include/wx-3.0/wx/gtk/mdi.h
 	"wx/frame.h"
+
+1448692452 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.cpp
+	"shLinuxSerialPort.h"
+	<iostream>
+	<stdlib.h>
+	<sys/ioctl.h>
+	<unistd.h>
+
+1448692345 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.h
+	<stdint.h>
+	<stdio.h>
+	<sys/stat.h>
+	<fcntl.h>
+	"SmartHome_Zigbee.h"
 
