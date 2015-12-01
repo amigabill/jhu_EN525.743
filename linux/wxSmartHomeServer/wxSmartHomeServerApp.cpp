@@ -15,6 +15,8 @@
 #include <wx/image.h>
 //#include <wx/textfile.h>
 #include <wx/file.h>
+#include <wx/utils.h> //for time wxNow
+#include <wx/log.h>
 //*)
 
 //#include "shLinuxSerialPort.h
@@ -44,6 +46,10 @@ bool wxSmartHomeServerApp::OnInit()
     }
     //*)
 
+    // update GUI display with current time
+    SHupdateGUItimeText();
+
+//    wxLogMessage( shCurrentDateTime[11] ) ;
 
     return wxsOK;
 
@@ -68,11 +74,12 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
     // and write new content to LCD display text area
     SHupdateGUIlogText(SH_CTRL_EVENT_LOG_FILENAME);
 
+    // update GUI display with current time
+    SHupdateGUItimeText();
 
     if(IsMainLoopRunning())
         event.RequestMore();
 }
-
 
 
 // load the log file and refresh the SmartHome Server GUI with any new log content
@@ -140,6 +147,45 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
     shLogFileLengthPrev = shLogFileLength;
 
     // all good at this point
+    return true;
+}
+
+
+// Get the current date and time, and update the Linux Server GUI
+uint8_t wxSmartHomeServerApp::SHupdateGUItimeText(void)
+{
+
+//    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
+
+    // get current time into a string
+    _shCurrentDateTime = wxNow();
+//    wxLogMessage( "Date + time = %s", _shCurrentDateTime ) ;
+
+    _shCurrentDay = _shCurrentDateTime.SubString(0, 2);
+//    wxLogMessage( "Day = %s", _shCurrentDay ) ;
+
+    _shCurrentMonth = _shCurrentDateTime.SubString(4, 6);
+//    wxLogMessage( "Month = %s", _shCurrentMonth ) ;
+
+    _shCurrentDate = _shCurrentDateTime.SubString(8, 9);
+//    wxLogMessage( "Date = %s", _shCurrentDate ) ;
+
+    _shCurrentYear = _shCurrentDateTime.SubString(20, 23);
+//    wxLogMessage( "Year = %s", _shCurrentYear ) ;
+
+    _shCurrentFullDate = _shCurrentDay + ", " + _shCurrentMonth + " " + _shCurrentDate + ", " + _shCurrentYear;
+//    wxLogMessage( "Full Date = %s", _shCurrentFullDate ) ;
+
+    _shCurrentTime = _shCurrentDateTime.SubString(11, 18);
+    wxLogMessage( "Time = %s", _shCurrentTime ) ;
+
+
+    // Clear out the GUI log fie text area before refreshing the text content,
+    // in order to avoid duplicated sets before the final new line(s) at the bottom
+//    Frame->shTextCtrlEvtlog->Clear();
+
+
+      // all good at this point
     return true;
 }
 

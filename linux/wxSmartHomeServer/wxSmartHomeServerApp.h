@@ -32,8 +32,16 @@ class wxSmartHomeServerApp : public wxApp
         wxSmartHomeServerFrame* Frame;
         size_t shLogFileumLinesPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
         size_t shLogFileLengthPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
+        wxString _shCurrentDateTime;
+        wxString _shCurrentDay;
+        wxString _shCurrentMonth;
+        wxString _shCurrentDate;
+        wxString _shCurrentYear;
+        wxString _shCurrentFullDate;
+        wxString _shCurrentTime;
 
         uint8_t SHupdateGUIlogText(const wxString& shLogFileName);
+        uint8_t SHupdateGUItimeText(void);
 
         DECLARE_EVENT_TABLE()
 

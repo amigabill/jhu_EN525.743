@@ -107,11 +107,11 @@ bool shSerialPort::rxAvailable(void)
 #endif
 
 
-uint rxReceive(void)
+uint8_t rxReceive(void)
 {
     char charRX;
 
-    return();
+    return(0);
 }
 
 // transmit the content of
