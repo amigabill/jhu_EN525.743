@@ -87,6 +87,10 @@ const long wxSmartHomeServerFrame::ID_PANEL1 = wxNewId();
 const long wxSmartHomeServerFrame::idMenuQuit = wxNewId();
 const long wxSmartHomeServerFrame::idMenuAbout = wxNewId();
 const long wxSmartHomeServerFrame::ID_STATUSBAR1 = wxNewId();
+const long wxSmartHomeServerFrame::ID_TEXTCTRL_SH_CURTIME = wxNewId();
+const long wxSmartHomeServerFrame::ID_TEXTCTRL_SH_CURDATE = wxNewId();
+const long wxSmartHomeServerFrame::ID_TEXTCTRL_SH_ROOMNAME = wxNewId();
+const long wxSmartHomeServerFrame::ID_TEXTCTRL_SH_LOADNAME = wxNewId();
 //*)
 
 BEGIN_EVENT_TABLE(wxSmartHomeServerFrame,wxFrame)
@@ -129,33 +133,83 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     shTextCtrlEvtlog->SetMaxSize(wxSize(-1,-1));
     shTextCtrlEvtlog->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
     shTextCtrlEvtlog->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
-    shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,24), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE_SH_LD"));
+//    shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,24), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE_SH_LD"));
+    shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,102), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE1"));
     shIntensityGauge->SetValue(30);
-    shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
-    shBMPbuttonFAV = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_FAV, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP"))), wxPoint(48,80), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_FAV"));
-    shBMPbuttonDWN = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_DWN, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP"))), wxPoint(64,152), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_DWN"));
+//    shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
+//    shBMPbuttonFAV = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_FAV, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP"))), wxPoint(48,80), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_FAV"));
+//    shBMPbuttonDWN = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_DWN, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP"))), wxPoint(64,152), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_DWN"));
+    shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,94), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
+    shBMPbuttonFAV = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_FAV, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP"))), wxPoint(48,158), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_FAV"));
+    shBMPbuttonDWN = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_DWN, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP"))), wxPoint(64,230), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_DWN"));
     StaticText1 = new wxStaticText(shPanel1, ID_STATICTEXT1, _("  SmartHome Event Log  "), wxPoint(280,16), wxDefaultSize, 0, _T("ID_STATICTEXT1"));
     StaticText1->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
     StaticLine1 = new wxStaticLine(shPanel1, ID_STATICLINE1, wxPoint(272,40), wxSize(560,16), wxLI_HORIZONTAL, _T("ID_STATICLINE1"));
     StaticLine1->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_ACTIVECAPTION));
-    shBMPbuttonON = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_ON, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp"))), wxPoint(152,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_ON"));
-    shBMPbuttonOFF = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_OFF, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP"))), wxPoint(152,112), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTONSH_OFF"));
-    shBMPbtnRoomLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,282), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_LFT"));
+//    shBMPbuttonON = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_ON, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp"))), wxPoint(152,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_ON"));
+//    shBMPbuttonOFF = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_OFF, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP"))), wxPoint(152,112), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTONSH_OFF"));
+//    shBMPbtnRoomLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,282), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_LFT"));
+    shBMPbuttonON = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_ON, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp"))), wxPoint(152,94), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_ON"));
+    shBMPbuttonOFF = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_OFF, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP"))), wxPoint(152,190), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTONSH_OFF"));
+    shBMPbtnRoomLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,300), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_LFT"));
     shBMPbtnLoadLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_LD_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,386), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_LD_LFT"));
-    shBMPbtnRoomRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,282), wxDefaultSize, wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_RT"));
+//    shBMPbtnRoomRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,282), wxDefaultSize, wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_RT"));
+    shBMPbtnRoomRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,300), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_RT"));
     shBMPbtnLoadRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_LD_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,386), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_LD_RT"));
     shCheckBoxIsHome1 = new wxCheckBox(shPanel1, ID_CHECKBOX_SH_HM1, _("Home 1"), wxPoint(296,448), wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX_SH_HM1"));
     shCheckBoxIsHome1->SetValue(false);
     shCheckBoxIsHome2 = new wxCheckBox(shPanel1, ID_CHECKBOX_SH_HM2, _("Home 2"), wxPoint(392,448), wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX_SH_HM2"));
     shCheckBoxIsHome2->SetValue(false);
-    shStaticTextRoomName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_RM_NAME, _("Bedroom 1"), wxPoint(80,304), wxSize(120,20), wxALIGN_CENTRE|wxNO_BORDER, _T("ID_STATICTEXT_SH_RM_NAME"));
-    shStaticTextRoomName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-    shStaticTextLoadName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_LD_NAME, _("Fan 1"), wxPoint(80,410), wxSize(120,20), wxALIGN_CENTRE, _T("ID_STATICTEXT_SH_LD_NAME"));
-    shStaticTextLoadName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-    StaticBitmap1 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP1, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,288), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP1"));
-    StaticBitmap2 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP2, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,336), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP2"));
+
+
+//    shStaticTextRoomName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_RM_NAME, _("Bedroom 1"), wxPoint(80,304), wxSize(120,20), wxALIGN_CENTRE|wxNO_BORDER, _T("ID_STATICTEXT_SH_RM_NAME"));
+//    shStaticTextRoomName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_RM_NAME, _("Bedroom 1"), wxPoint(80,322), wxSize(120,20), wxALIGN_CENTRE, _T("ID_STATICTEXT_SH_RM_NAME"));
+//    shStaticTextRoomName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+//    shStaticTextLoadName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_LD_NAME, _("Fan 1"), wxPoint(80,410), wxSize(120,20), wxALIGN_CENTRE, _T("ID_STATICTEXT_SH_LD_NAME"));
+//    shStaticTextLoadName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+
+
+//    StaticBitmap1 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP1, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,288), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP1"));
+//    StaticBitmap2 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP2, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,336), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP2"));
+    StaticBitmap1 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP1, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,306), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP1"));
+    StaticBitmap2 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP2, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,354), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP2"));
     StaticBitmap3 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP3, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,392), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP3"));
     StaticBitmap4 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP4, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,440), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP4"));
+
+
+#if 0
+//    shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _(" Current Time"), wxPoint(50,60), wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL2"));
+    shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _(" Current Time"), wxPoint(50,60), wxSize(20,250), wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL2"));
+    shTextCtrlCurrentTime->SetMinSize(wxSize(150,20));
+    shTextCtrlCurrentTime->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlCurrentTime->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+//    shTextCtrlCurrentDate = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURDATE, _(" Current Date "), wxPoint(50,20), wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURDATE"));
+    shTextCtrlCurrentDate = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURDATE, _(" Current Date "), wxPoint(50,20), wxSize(20,250), wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURDATE"));
+    shTextCtrlCurrentDate->SetMinSize(wxSize(150,20));
+    shTextCtrlCurrentDate->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlCurrentDate->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+#endif
+
+    shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _("23:59:59"), wxPoint(50,60), wxDefaultSize, wxTE_READONLY|wxTE_LEFT|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURTIME"));
+    shTextCtrlCurrentTime->SetMinSize(wxSize(250,20));
+    shTextCtrlCurrentTime->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlCurrentTime->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+    shTextCtrlCurrentDate = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURDATE, _("Mon, Dec 01, 2015 "), wxPoint(50,20), wxDefaultSize, wxTE_READONLY|wxTE_LEFT|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURDATE"));
+    shTextCtrlCurrentDate->SetMinSize(wxSize(250,20));
+    shTextCtrlCurrentDate->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlCurrentDate->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+
+
+    shTextCtrlRoomName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_ROOMNAME, _("Room Name"), wxPoint(80,320), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_ROOMNAME"));
+    shTextCtrlRoomName->SetMinSize(wxSize(100,20));
+    shTextCtrlRoomName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlRoomName->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+    shTextCtrlLoadName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_LOADNAME, _("Load Name"), wxPoint(88,408), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_LOADNAME"));
+    shTextCtrlLoadName->SetMinSize(wxSize(100,20));
+    shTextCtrlLoadName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+    shTextCtrlLoadName->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
+
+
     BoxSizer1->Add(shPanel1, 1, wxALL|wxEXPAND|wxFIXED_MINSIZE|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     SetSizer(BoxSizer1);
     MenuBar1 = new wxMenuBar();
@@ -521,8 +575,18 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
     shCurrentIntensity = LOAD_INTENSITY_FULL_OFF; // 0
 
     shCurrentLoadNodeInfo.SHthisNodeLoc   = DEFAULT_ROOM_NUM;
+    // TODO get room name from storage text file and display to GUI
+    // _shCurrentRoomName = SHgetRoomNameFromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
+    //shTextCtrlRoomName->Clear();
+    //shTextCtrlRoomName->Append(_shCurrentRoomName);
+
     shCurrentLoadNodeInfo.SHthisNodeID    = SHgetLoadNodeIDfromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
     shCurrentLoadNodeInfo.SHthisNodeType  = SHgetLoadNodeTypefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
+    // TODO get load name from storage text file and display to GUI
+    // _shCurrentLoadName = SHgetLoadNameFromStorage(DEFAULT_LOAD_NUM);
+    //shTextCtrlLoadName->Clear();
+    //shTextCtrlLoadName->Append(_shCurrentLoadName);
+
     shCurrentLoadNodeInfo.SHthisNodePin   = 0; // pin is an Arduino thing, not used in Server code
 
     shCurrentLoadNodeInfo.SHothrNodeID = shThisNodeID;  // the other node iD talking to a Load is this server

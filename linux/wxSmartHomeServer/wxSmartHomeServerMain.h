@@ -41,6 +41,8 @@ class wxSmartHomeServerFrame: public wxFrame
 {
     public:
         wxTextCtrl* shTextCtrlEvtlog;
+        wxTextCtrl* shTextCtrlCurrentDate;
+        wxTextCtrl* shTextCtrlCurrentTime;
 
         wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id = -1);
         virtual ~wxSmartHomeServerFrame();
@@ -110,6 +112,10 @@ class wxSmartHomeServerFrame: public wxFrame
         static const long ID_STATICBITMAP2;
         static const long ID_STATICBITMAP3;
         static const long ID_STATICBITMAP4;
+        static const long ID_TEXTCTRL_SH_CURTIME; //ID_TEXTCTRL2;
+        static const long ID_TEXTCTRL_SH_CURDATE;
+        static const long ID_TEXTCTRL_SH_ROOMNAME;
+        static const long ID_TEXTCTRL_SH_LOADNAME;
         static const long ID_PANEL1;
         static const long idMenuQuit;
         static const long idMenuAbout;
@@ -122,7 +128,8 @@ class wxSmartHomeServerFrame: public wxFrame
         wxStatusBar* StatusBar1;
         wxBitmapButton* shBMPbuttonON;
         wxCheckBox* shCheckBoxIsHome1;
-        wxStaticText* shStaticTextRoomName;
+//        wxStaticText* shStaticTextRoomName;
+        wxTextCtrl* shTextCtrlRoomName;
         wxStaticText* StaticText1;
         wxBitmapButton* shBMPbtnRoomLeft;
         wxBitmapButton* shBMPbuttonFAV;
@@ -134,7 +141,8 @@ class wxSmartHomeServerFrame: public wxFrame
         wxBitmapButton* shBMPbuttonDWN;
         wxStaticBitmap* StaticBitmap3;
         wxStaticBitmap* StaticBitmap1;
-        wxStaticText* shStaticTextLoadName;
+//        wxStaticText* shStaticTextLoadName;
+        wxTextCtrl* shTextCtrlLoadName;
         wxStaticBitmap* StaticBitmap4;
         wxGauge* shIntensityGauge;
         wxBitmapButton* shBMPbuttonUP;

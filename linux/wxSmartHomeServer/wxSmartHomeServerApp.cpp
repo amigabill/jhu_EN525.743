@@ -173,17 +173,20 @@ uint8_t wxSmartHomeServerApp::SHupdateGUItimeText(void)
     _shCurrentYear = _shCurrentDateTime.SubString(20, 23);
 //    wxLogMessage( "Year = %s", _shCurrentYear ) ;
 
-    _shCurrentFullDate = _shCurrentDay + ", " + _shCurrentMonth + " " + _shCurrentDate + ", " + _shCurrentYear;
+    _shCurrentDayFullDate = _shCurrentDay + ", " + _shCurrentMonth + " " + _shCurrentDate + ", " + _shCurrentYear;
+    _shCurrentFullDate = _shCurrentMonth + " " + _shCurrentDate + ", " + _shCurrentYear;
 //    wxLogMessage( "Full Date = %s", _shCurrentFullDate ) ;
 
     _shCurrentTime = _shCurrentDateTime.SubString(11, 18);
-    wxLogMessage( "Time = %s", _shCurrentTime ) ;
+//    wxLogMessage( "Time = %s", _shCurrentTime ) ;
 
 
     // Clear out the GUI log fie text area before refreshing the text content,
     // in order to avoid duplicated sets before the final new line(s) at the bottom
-//    Frame->shTextCtrlEvtlog->Clear();
-
+    Frame->shTextCtrlCurrentDate->Clear();
+    Frame->shTextCtrlCurrentDate->AppendText(_shCurrentDayFullDate);
+    Frame->shTextCtrlCurrentTime->Clear();
+    Frame->shTextCtrlCurrentTime->AppendText(_shCurrentTime);
 
       // all good at this point
     return true;

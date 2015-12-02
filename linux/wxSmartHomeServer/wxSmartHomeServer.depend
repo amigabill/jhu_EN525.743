@@ -1,11 +1,13 @@
 # depslib dependency file v1.0
-1448598773 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
+1449041385 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
 	"wxSmartHomeServerApp.h"
 	"wxSmartHomeServerMain.h"
 	<wx/image.h>
 	<wx/file.h>
+	<wx/utils.h>
+	<wx/log.h>
 
-1448513416 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.h
+1449041136 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.h
 	<wx/app.h>
 	<wx/file.h>
 	<stdint.h>
@@ -584,7 +586,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/app.h
 
-1448691607 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
+1449041136 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
 	<wx/gauge.h>
 	<wx/bmpbuttn.h>
 	<wx/checkbox.h>
@@ -1118,7 +1120,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/checkbox.h
 
-1448692672 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
+1449041245 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
 	"wxSmartHomeServerMain.h"
 	"wx/defs.h"
 	"wx/wxprec.h"
@@ -1696,14 +1698,14 @@
 1414317467 /usr/include/wx-3.0/wx/gtk/mdi.h
 	"wx/frame.h"
 
-1448692452 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.cpp
+1448919012 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.cpp
 	"shLinuxSerialPort.h"
 	<iostream>
 	<stdlib.h>
 	<sys/ioctl.h>
 	<unistd.h>
 
-1448692345 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.h
+1448694165 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/shLinuxSerialPort.h
 	<stdint.h>
 	<stdio.h>
 	<sys/stat.h>

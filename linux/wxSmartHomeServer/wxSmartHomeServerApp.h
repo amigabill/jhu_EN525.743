@@ -38,6 +38,7 @@ class wxSmartHomeServerApp : public wxApp
         wxString _shCurrentDate;
         wxString _shCurrentYear;
         wxString _shCurrentFullDate;
+        wxString _shCurrentDayFullDate;
         wxString _shCurrentTime;
 
         uint8_t SHupdateGUIlogText(const wxString& shLogFileName);
