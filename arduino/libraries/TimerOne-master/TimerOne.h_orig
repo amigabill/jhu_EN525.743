@@ -28,9 +28,6 @@
 #define TIMER1_RESOLUTION 65536UL  // Timer1 is 16 bit
 
 
-#define WGMA ( _BV(WGM11) )
-#define WGMB ( _BV(WGM13) | _BV(WGM12) )
-
 // Placing nearly all the code in this .h file allows the functions to be
 // inlined by the compiler.  In the very common case with constant values
 // the compiler will perform all calculations and simply write constants
@@ -52,8 +49,7 @@ class TimerOne
 	setPeriod(microseconds);
     }
     void setPeriod(unsigned long microseconds) __attribute__((always_inline)) {
-	//const unsigned long cycles = (F_CPU / 2000000) * microseconds;
-	const unsigned long cycles = (F_CPU / 1000000) * microseconds;
+	const unsigned long cycles = (F_CPU / 2000000) * microseconds;
 	if (cycles < TIMER1_RESOLUTION) {
 		clockSelectBits = _BV(CS10);
 		pwmPeriod = cycles;
@@ -78,34 +74,25 @@ class TimerOne
 		pwmPeriod = TIMER1_RESOLUTION - 1;
 	}
 	ICR1 = pwmPeriod;
-	//TCCR1B = _BV(WGM13) | clockSelectBits;
-	TCCR1A = WGMA;
-	TCCR1B = WGMB | clockSelectBits;
+	TCCR1B = _BV(WGM13) | clockSelectBits;
     }
 
     //****************************
     //  Run Control
     //****************************
     void start() __attribute__((always_inline)) {
-	//TCCR1B = 0;         // original as downloaded
-	//TCCR1B = _BV(WGM13);  // my testing (Bill Toner)
-	TCCR1A = WGMA;
-	TCCR1B = WGMB ;  // my testing (Bill Toner)
+	TCCR1B = 0;
 	TCNT1 = 0;		// TODO: does this cause an undesired interrupt?
 	resume();
     }
     void stop() __attribute__((always_inline)) {
-	//TCCR1B = _BV(WGM13);
-	TCCR1A = WGMA;
-	TCCR1B = WGMB;
+	TCCR1B = _BV(WGM13);
     }
     void restart() __attribute__((always_inline)) {
 	start();
     }
     void resume() __attribute__((always_inline)) {
-	//TCCR1B = _BV(WGM13) | clockSelectBits;
-	TCCR1A = WGMA;
-	TCCR1B = WGMB | clockSelectBits;
+	TCCR1B = _BV(WGM13) | clockSelectBits;
     }
 
     //****************************
