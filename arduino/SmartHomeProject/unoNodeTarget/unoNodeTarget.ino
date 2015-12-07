@@ -6,7 +6,7 @@
  *               with Professor Houser.
  *
  *               While Arduino preference is to do things in a very C++ style, I am a C programmer, and will
- *               write some this software in more of a C style, due to scheduling concerns of working in
+ *               write some of this software in more of a C style, due to scheduling concerns of working in
  *               a style that is slightly foreign to me.
  *
  *               Arduino Uno Target nodes in this system will be directly in control of the brightness of light fixtures,
@@ -16,7 +16,7 @@
  *               so that all other nodes will receive the same message.
  *
  *               Target loads, light fixtures or ceiling fans, will be driven by the Uno board via
- *               a set of ZeroCross Tail and PowerSwitch Tail 2 units to observe and control the
+ *               a set of ZeroCross Tail and PowerSSR Tail (triac relay) units to observe and control the
  *               120V AC power lines to the loads.
  *
  *               When a SmartHome command message is received, and is found to be addressed to a target load controlled
@@ -41,14 +41,25 @@
  *
  *               TODO -
  *
- *               NOTES:
+ *               NOTES: I had intended to share this code more with Arduino Due nodes, which I plan to use
+ *               as the wall control nodes, placed where you would typically find traditional light switches,
+ *               and perhaps replacing traditional light switches. I am finding that this is difficult,
+ *               due to endian differences, and also due to differences in data packing and word alignments,
+ *               particularly in my initial implementation of Zigbee transmit and receive functions.
  *
- *               Xbee module for Zigbee must be preconfigured as a Router in API mode and 9600 8n1
- *
- *               This program was originally intended to use PWM outputs to control triac, and this support up to 6 or so loads per Arduino Uno driver board.
+ *               This unit's Xbee Zigbee module MUST and SHALL BE preconfigured as a Router in API mode and 9600 8n1
+ *               One XBee Zigbee module, attached to the SmartHome Linux Server unit, MUST and SHALL be preconfigured as a Coordinator Router in API mode and 9600 8n1
+ *               
+ *               This program was originally intended to use PWM outputs tocontrol triac, and this support up to 6 or so loads per Arduino Uno driver board.
  *               This proved problematic, and now the Triac control pulse is done in software, perhaps later as a different timer method than PWM, but
  *               pure software controlled bit-banging output pins, and this can allow a larger number of loads in Uno than OWM would have allowed.
  *               But for now, we remain using only one or two loads for testing/debug, and a large number may not be practical to make use of in real world
+ *               
+ *               This program makes use of the TimerOne library, which is made available under the
+ *               Creative Commons Attribution 3.0 United States License  "CC BY 3.0 US"
+ *               https://github.com/PaulStoffregen/TimerOne
+ *               http://creativecommons.org/licenses/by/3.0/us/
+ *
  */
 
 // uncomment these DEBUG items to enable debug serial prints
@@ -162,7 +173,7 @@ volatile uint8_t currentNodeInfoIndex= DEFAULT_LOAD_NUM;  //
 #define LOAD_INTENSITY_HIGH      LOAD_INTENSITY_MAX   // this level value is full-on
 
 
-// defines for Arduino digital pins from only the tumber to D and ht enumber, such as 6->D6
+// defines for Arduino digital pins from only the tumber to D and the number, such as 6->D6
 #define D6 6
 #define D9 9
 
@@ -204,16 +215,27 @@ volatile uint8_t buttonChangeLoadPrev = PIN_BUTTON_UP;
 volatile uint8_t buttonXBconfigPrev   = PIN_BUTTON_UP;
 volatile uint8_t inXbeeConfigMode     = NO;
 
-// Trigger signal from ZeroCross Tail unit for AC line sinewave timing of PWM
+// Trigger signal from ZeroCross Tail unit for AC line sinewave timing of Triac AC relay control signals
 volatile uint8_t AC0CrossPrev         = AC0CROSS_NO_CROSSING;
 
 // Timer1 variables for timed triac controls
+#define PERIOD_uS_60HZ  (unsigned long)(1000000 * 1 / 60)  // comes out in microseconds
+#define HALFPERIOD_uS_60HZ (unsigned long)(PERIOD_uS_60HZ / 2)  // comes out in microseconds
+//#define T1_LOAD_INTENSITY_TIMESTEP (unsigned long)( (HALFPERIOD_uS_60HZ / 5) - 120 )  // comes out in microseconds
+//#define T1_LOAD_INTENSITY_TIMESTEP (unsigned long)( 1500 )  // comes out in microseconds
+#define T1_LOAD_INTENSITY_TIMESTEP (long)( 30000 )  // comes out in microseconds
+//#define T1_LOAD_INTENSITY_TIMESTEP (unsigned long)( 8000 )  // in microseconds
+#define TRIAC_FIRE_PULSE_TIME (unsigned long)(100)
 volatile uint8_t shTriacPulse = YES;
 volatile uint8_t shIrqT1thisLevel = LOAD_INTENSITY_FULL_OFF;
 
 // standard pin13 LED on Arduino Uno and Due for testing and debug. NOT compatible with LCS panel installed on Due nodes.
 uint16_t ledPin = 13;                 // LED connected to digital pin 13 for debug
 volatile uint8_t ledPinState = 0;
+uint16_t pinTriacIRQ  = 4;         // for debug to indicate when in the Triac timer IRQ
+uint16_t pinZeroCrossIRQ  = 7;         // for debug to indicate when in the Triac timer IRQ
+uint16_t pinTimer1irq = 8;         // for debug to indicate when in the Triac timer IRQ
+
 
 uint8_t i = 0; //for loop counter
 
@@ -231,6 +253,14 @@ void setup()
     #endif
 
     // put your setup code here, to run once:
+
+    // some debug output signals for probing with LED or oscilloscope
+    pinMode(pinZeroCrossIRQ, OUTPUT);      // sets the digital pin as output
+    digitalWrite(pinZeroCrossIRQ, LOW);   // sets the pin "off"
+    pinMode(pinTimer1irq, OUTPUT);      // sets the digital pin as output
+    digitalWrite(pinTimer1irq, LOW);   // sets the pin "off"
+    pinMode(pinTriacIRQ, OUTPUT);      // sets the digital pin as output
+    digitalWrite(pinTriacIRQ, LOW);   // sets the pin "off"
     pinMode(ledPin, OUTPUT);      // sets the digital pin as output
     ledPinState = 0;
 
@@ -240,20 +270,55 @@ void setup()
 
     // Xbee should be preconfigured for API mode, 9600, 8n1, so match that in Arduino serial port
     Serial.begin(9600);
+//    Serial.begin(57600);
 
     Serial.println("Testing, 1, 2, 3, testing");
 
-    #define 60HZ_PERIOD_uS  (unsigned long)(1000 * 1 / 60)
-    #define 60HZ_HALFPERIOD_uS (unsigned long)(60HZ_PERIOD_uS / 2)
-    #define T1_LOAD_INTENSITY_TIMESTEP (unsigned long)(()60HZ_HALFPERIOD_uS / 5) - 120)
-    #define TRIAC_FIRE_PULSE_TIME (unsigned long)(100)
-    Timer1.initialize(T1_LOAD_INTENSITY_TIMESTEP); // done once to init the timer library, later use setperiod to change
+    //init the nodeInfo structure data 
+    initNodeInfoUno();
+    
+Serial.print("PERIOD_uS_60HZ = ");
+Serial.println(PERIOD_uS_60HZ, DEC);
+
+Serial.print("HALFPERIOD_uS_60HZ = ");
+Serial.println(HALFPERIOD_uS_60HZ, DEC);
+
+Serial.print("Triac timestep = ");
+Serial.println(T1_LOAD_INTENSITY_TIMESTEP, DEC);
+
+
+    noInterrupts();
+//    Timer1.initialize(T1_LOAD_INTENSITY_TIMESTEP); // done once to init the timer library, later use setperiod to change
+//    Timer1.initialize(1100); // done once to init the timer library, later use setperiod to change
+    // TimerOne lib uses PWM Phase & Freq Correct mode, with my init/setPeriod value placed into ICR1
+    Timer1.initialize(); // done once to init the timer library, later use setperiod to change
     Timer1.attachInterrupt(irqT1triacTriggers); // irqT1triacTriggers to be called at each intensity level timestep AND at end of each triac fire pulse
+    Timer1.setPeriod(1200);
+    Timer1.start();
+    interrupts();
+    // custom timer code for this Arduino application
+//    timerInit(); 
+//    timerStart();
+//    timerStop();
+
+Serial.print("F_CPU=");
+Serial.print(F_CPU, DEC);
+Serial.print(" ; TIMER1_RESOLUTION=");
+Serial.print(TIMER1_RESOLUTION, DEC);
+Serial.print(" ; TIMSK1=b");
+Serial.print(TIMSK1, BIN);
+Serial.print(" ; ICR1=");
+Serial.print(ICR1 , DEC);
+Serial.print(" ; TCCR1A=b");
+Serial.print(TCCR1A , BIN);
+Serial.print(" ; TCCR1B=b");
+Serial.print(TCCR1B , BIN);
+Serial.print(" ; WGM13=");
+Serial.print(WGM13, DEC);
+Serial.println();
 
     shTriacPulse= NO;
     shIrqT1thisLevel = LOAD_INTENSITY_FULL_OFF;
-
-    initNodeInfoUno();
 
     //experimenting with sending an ON command message frame TOTO - remove experiment
     //zbXmitAPIframe();
@@ -302,6 +367,7 @@ void loop()
         if (YES == mySHzigbee.newSHmsgTX)
         {
             // ?assemble? and transmit the frame
+            mySHzigbee.zbXmitAPIframe();
         }
 #endif
 
@@ -382,6 +448,13 @@ uint8_t initNodeInfoUno(void)
     mySHnodeMasterInfo.nodeInfo[i].SHthisNodeLevelCurrent = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY);
     mySHnodeMasterInfo.nodeInfo[i].SHthisNodeIsPowered    = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_POWERED);
 
+#if 0
+    Serial.print("DEBUG - setting FAV level for node ");
+    Serial.print(i, DEC);
+    Serial.print(" to level ");
+    Serial.print(mySHnodeMasterInfo.nodeInfo[i].SHthisNodeLevelFav);
+    Serial.println();
+#endif
 
 //            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
 //        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
@@ -443,11 +516,11 @@ void initEEPROMnodeInfo(void)
 
 //  tempNodeID = 0x0709;
   tempNodeID = 0xdead;
-  programEEPROMnodeInfo( 0, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_LIGHT, tempNodeID, LOAD_POWERED_OFF, 2, LOAD_INTENSITY_MAX );
+  programEEPROMnodeInfo( 0, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_LIGHT, tempNodeID, LOAD_POWERED_OFF, 2, 4 );
 
 //  tempNodeID = 0x0a0c;
   tempNodeID = 0xbeef;
-  programEEPROMnodeInfo( 1, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_FAN, tempNodeID, LOAD_POWERED_OFF, 8, LOAD_INTENSITY_MAX );
+  programEEPROMnodeInfo( 1, 0, SH_NODE_TYPE_TARGET, PIN_CTRL_FAN, tempNodeID, LOAD_POWERED_OFF, 5, 2 );
 
   Serial.println("Completed Initting EEPROM values");
 }
@@ -557,66 +630,66 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             }
             break;
 
-        case SH_MSG_ST_ACK_REQ:  // TX
+        case SH_MSG_ST_ACK_REQ:  // TX back to initiator
             Serial.print("In SH_MSG_ST_ACK_REQ for nodeID ");
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
             Serial.print(" for command ");
             Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
 
-        //    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
-
 #if 0
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX = TXmsgACKREQ(nodeInfoIndex);
-            if ( SH_STATUS_SUCCESS == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusTX )
-            {
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
-            }
-            else
-            {
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_IDLE;
-            }
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType = SH_MSG_ST_ACK_REQ;
+            mySHzigbee.prepareTXmsg(
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
+                          SH_MSG_ST_ACK_REQ,                                                   // MsgType
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand,  // CMD
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH,
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL,
+                          mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal
+                        );
+            // indicate main loop that a TX frame is ready to send
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = YES;
+            mySHzigbee.zbXmitAPIframe();      // Transmit the SmartHome message over Zigbee
+
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = NO;  // sent it, so make sure we don't send it again
+
+            // wait fro confirmation from command initiator node
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
+
+#else
+            // quick hack for development/debug while we get this protocol working
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
 #endif
 
-            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
             break;
 
         case SH_MSG_ST_CNFRM:  // RX
-#if 0
-            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CONFIRM == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) && (mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHdestID == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID) )
+#if 0        
+            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CONFIRM == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) ) // && 
             {
-                // TODO - going to keep it this way? - move to extractRXpayload? - keep this way for now
-                captureRXmsg(nodeInfoIndex);
-
-                Serial.print("nodeID=");
-                Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
-                Serial.print(" got confirm from ");
-                Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID, HEX);
-                Serial.print(" ; msgType=");
-                Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType, HEX);
-                Serial.print(" ; CMD=");
-                Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
-                Serial.print(" ; confirm=");
-                Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal, HEX);
-
-                // if confirmation is confirmed
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
-                // else if confirmation is denied
-                // TODO - add more states to send error notice to server
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_IDLE;
             }
-            else // this SH message was to a different node, do nothing this iteration
-            {
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_CNFRM;
-            }
+#else        
+            // quick hack for development/debug while we get this protocol working
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
 #endif
-                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
             break;
 
         case SH_MSG_ST_COMPLETE: // TX
-
-            // run the received SH command
-            SHrunCommand(nodeInfoIndex);
-
+#if 0        
+            if(SH_STATUS_CONFIRMED == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal)
+            {
+                // run the received SH command
+                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = SHrunCommand(nodeInfoIndex);
+            }
+            else
+            {
+                mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = SH_STATUS_FAILED;
+            }
+#else
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = SHrunCommand(nodeInfoIndex);
+#endif
+            
             mySHzigbee.prepareTXmsg(
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
@@ -627,8 +700,10 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal
                         );
             // indicate main loop that a TX frame is ready to send
-//            newFrameForTX = YES;
-
+//            mySHzigbee.newSHmsgTX = YES;
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = YES;
+            mySHzigbee.zbXmitAPIframe();      // Transmit the SmartHome message over Zigbee
+            
             Serial.print("nodeID=");
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
             Serial.print(" sending COMPLETED to ");
@@ -639,6 +714,9 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
             Serial.print(" ; status=");
             Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal, HEX);
+
+
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = NO;  // sent it, so make sure we don't send it again
 
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_IDLE;
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand = SH_CMD_NOP;
@@ -709,31 +787,36 @@ void captureRXmsg(uint8_t nodeInfoIndex)
 
 
 // Determine which command is pending for this load ID and execute it
-void SHrunCommand(uint8_t nodeInfoIndex)
+//void SHrunCommand(uint8_t nodeInfoIndex)
+uint8_t SHrunCommand(uint8_t nodeInfoIndex)
 {
+    uint8_t cmdStatus = SH_STATUS_FAILED; // init to Failed, change it if something goes well
   #if 1
     //switch ( SHcommandRX )
     switch ( mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand )
     {
         case SH_CMD_LOAD_ON:
 //            digitalWrite(ledPin, HIGH);   // sets the LED on
-            loadPowerON(nodeInfoIndex);
+            cmdStatus = loadPowerON(nodeInfoIndex);
             break;
 
         case SH_CMD_LOAD_OFF:
-//      digitalWrite(ledPin, LOW);   // sets the LED off
-        loadPowerOFF(nodeInfoIndex);
-        break;
+//          digitalWrite(ledPin, LOW);   // sets the LED off
+            cmdStatus = loadPowerOFF(nodeInfoIndex);
+            break;
 
         case SH_CMD_LOAD_INC:
-            loadIncreaseIntensity(nodeInfoIndex);
+            cmdStatus = loadIncreaseIntensity(nodeInfoIndex);
             break;
 
         case SH_CMD_LOAD_DEC:
-            loadDecreaseIntensity(nodeInfoIndex);
+            cmdStatus = loadDecreaseIntensity(nodeInfoIndex);
             break;
 
         case SH_CMD_LOAD_GOTOFAV:    // change load to Favorite Intensity Level - NOT YET IMPLEMENTED
+            cmdStatus = loadGotoFavIntensity(nodeInfoIndex);
+            break;
+            
         case SH_CMD_LOAD_SAVEFAV:   // store new value as Favorite Intensity Level - NOT YET IMPLEMENTED
         case SH_CMD_LOAD_READFAV:   // send Favorite Intensity Level back to SH message source node - NOT YET IMPLEMENTED
         case SH_CMD_LOAD_READCRNT:  // send Current Intensity Level back to SH message source node - NOT YET IMPLEMENTED
@@ -749,6 +832,8 @@ void SHrunCommand(uint8_t nodeInfoIndex)
     Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
     Serial.println("");
 #endif
+
+    return(cmdStatus);
 }
 
 #if 0
@@ -816,20 +901,66 @@ void loadToggle(uint8_t nodeInfoIndex)
     Serial.print("DEBUG - In loadToggle(), new intensity value=");
     Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered, DEC);
     Serial.print("for NodeInfoIndex=");
-    Serial.println(nodeInfoIndex);
+    Serial.println(nodeInfoIndex, DEC);
 
 //    EEPROM.read(); // get new value just saved from EEPROM
 
 // LOAD_POWERED_ON
 
 // TODO - EEPROM needs another byte per load to save on/off state as well as current intensity. If turn off, store that, but also keep current intensity for next on.
-    // calculate new PWM value for analogWrite() call
+}
+
+
+
+// change the current active intensity level to the stored favorite level for this node
+uint8_t loadGotoFavIntensity(uint8_t nodeInfoIndex)
+{
+    uint16_t tmpVal = 0;
+
+    tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+
+    if(tmpVal != mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav)
+    {
+        // update current level from whatever to FAVorite level
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
+
+        // Save the new current intensity level to EEPROM for erecovery from a power outage
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY), tmpVal );
+    }
+
+    // if not already on, turn it on to the new level
+    loadPowerON(nodeInfoIndex);
+
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
+}
+
+
+// change the current favorite intensity level to the current active level for this node
+uint8_t loadSaveNewFavIntensity(uint8_t nodeInfoIndex)
+{
+    uint16_t tmpVal = 0;
+
+    tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
+
+    if(tmpVal != mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent)
+    {
+        // update current level from whatever to FAVorite level
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+
+        // Save the new current intensity level to EEPROM for erecovery from a power outage
+//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_FAV_INTSTY), tmpVal );
+    }
+
+    // if not already on, turn it on to the new level
+    loadPowerON(nodeInfoIndex);
+
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav);
 }
 
 
 // If load is currently full-OFF, then apply power to previous current intensity level
 // (ON/OFF is essentially an enable condition to the current intensity level)
-void loadPowerON(uint8_t nodeInfoIndex)
+uint8_t loadPowerON(uint8_t nodeInfoIndex)
 {
     uint16_t tmpVal = 0;
 
@@ -859,12 +990,14 @@ void loadPowerON(uint8_t nodeInfoIndex)
     {
         Serial.println(" ; Already ON, do nothing");
     }
+
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
 }
 
 
 // If load is currently full-OFF, then apply power to previous current intensity level
 // (ON/OFF is essentially an enable condition to the current intensity level)
-void loadPowerOFF(uint8_t nodeInfoIndex)
+uint8_t loadPowerOFF(uint8_t nodeInfoIndex)
 {
     Serial.print("DEBUG - In loadPowerOFF()");
 
@@ -881,71 +1014,58 @@ void loadPowerOFF(uint8_t nodeInfoIndex)
     {
         Serial.println(" ; Already OFF, do nothing");
     }
+
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
 }
 
 
 // increase intensity level one step
-void loadIncreaseIntensity(uint8_t nodeInfoIndex)
+uint8_t loadIncreaseIntensity(uint8_t nodeInfoIndex)
 {
-    uint16_t tmpVal = 0;
-//    uint8_t tmpVal = 0;
+//    uint16_t tmpVal = 0;
+    uint8_t tmpVal = 0;
 
 //mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin          = EEPROM.read(eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_PIN);
 
     Serial.print("DEBUG - In loadIncreaseIntensity()");
 
-    tmpVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
-
-#if 0
-    // TODO - expand this checkign to catch if new value is greater than MAX but would rollover and appear less
-//    if( (tmpVal > PWM_MAX_COUNT) || ((tmpVal <= PWM_MAX_COUNT) && ((tmpVal + PWM_STEP_VAL) < tmpVal) ) )
-    if( (tmpVal > PWM_MAX_COUNT) || ((tmpVal <= PWM_MAX_COUNT) && ((tmpVal + PWM_STEP_VAL) > PWM_MAX_COUNT) ) )
+    if(NO == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered)
     {
-        tmpVal = PWM_MAX_COUNT;
-    }
-    else
-    {
-        tmpVal += PWM_STEP_VAL;
-    }
-
-// using PWM timers has been problematic, changing to a somewhat more manual pulse timing
-    analogWrite(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodePin, tmpVal);
-#endif
-
-    // do not increase above max intensity
-    if(tmpVal < LOAD_INTENSITY_MAX)
-    {
-        tmpVal += 1;
-    }
-    else
-    {
-        tmpVal = LOAD_INTENSITY_MAX;
-    }
-
-    // Update the current intensity level for this load
-    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent = tmpVal;
-//    EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY), tmpVal );
-
-    if(LOAD_INTENSITY_FULL_OFF < tmpVal)
-    {
+        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent = LOAD_INTENSITY_FULL_OFF + 1;
         mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = YES;
-//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), YES );
     }
     else
     {
-        mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = NO;
-//        EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), NO );
+        if(LOAD_INTENSITY_MAX <= mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent)
+        {
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent = LOAD_INTENSITY_MAX;
+        }
+        else
+        {
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent += 1;
+        }
+
+
+        if(LOAD_INTENSITY_FULL_OFF < mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent)
+        {
+            mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered = YES;
+        }
     }
+
+//    EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_BS_CRNT_INTSTY), mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent );
+//    EEPROM.update( (eepromOffsetNodeBase + UNO_EEPROM_OFFSET_N1_POWERED), YES );
 
     Serial.print(" ; Load ");
     Serial.print(nodeInfoIndex, DEC);
     Serial.print(" new intensity = ");
-    Serial.println(tmpVal, DEC);
+    Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent, DEC);
+
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
 }
 
 
 // decrease intensity level one step
-void loadDecreaseIntensity(uint8_t nodeInfoIndex)
+uint8_t loadDecreaseIntensity(uint8_t nodeInfoIndex)
 {
     uint16_t tmpVal = 0;
 //    uint8_t tmpVal = 0;
@@ -986,6 +1106,15 @@ void loadDecreaseIntensity(uint8_t nodeInfoIndex)
     Serial.print(nodeInfoIndex, DEC);
     Serial.print(" new intensity = ");
     Serial.println(tmpVal, DEC);
+
+    if(LOAD_INTENSITY_FULL_OFF < tmpVal)
+    {
+        return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
+    }
+    else
+    {
+        return(LOAD_INTENSITY_FULL_OFF);
+    }
 }
 
 
@@ -1013,19 +1142,6 @@ void changeLoad(uint8_t nodeInfoIndex)
 }
 
 
-#if 0
-// trigger the AC line triacs to fire, turning on
-void enableSSRrelay(uint8_t nodeInfoIndex)
-{
-    Serial.println("DEBUG - In enableSSRrelay()");
-//    analogWrite(pin, 0); // disable the PWM to the load triacs
-//    TODO - add PWM output pin ID to the load's NodeInfo structure in EEPROM, for analogWrite calls
-// calculate new PWM value in places that change the current intensity, and in powerOn setup function
-//    analogWrite(pin, newValue); // enable
-}
-#endif
-
-
 // Interrupt vector handling routine for A0 to A5 Pin Change Interrupt inputs
 ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
 {
@@ -1050,7 +1166,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_CHANGE_LOAD)) && (PIN_BUTTON_UP == buttonDimmerPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_CHANGE_LOAD))
             {
                 changeLoad(currentNodeInfoIndex);
@@ -1072,7 +1188,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_ON_OFF)) && (PIN_BUTTON_UP == buttonOnOffPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+ //           delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_ON_OFF))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
@@ -1084,7 +1200,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_ON)) && (PIN_BUTTON_UP == buttonOnPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_ON))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
@@ -1098,7 +1214,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_XBCONFIG)) && (PIN_BUTTON_UP == buttonXBconfigPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_XBCONFIG))
             {
                 toggleXbeeConfigMode();
@@ -1109,7 +1225,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_OFF)) && (PIN_BUTTON_UP == buttonOffPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_OFF))
             {
                 // (ON/OFF is essentially an enable condition to the current intensity level)
@@ -1123,7 +1239,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_BRIGHER)) && (PIN_BUTTON_UP == buttonBrighterPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_BRIGHER))
             {
                 loadIncreaseIntensity(currentNodeInfoIndex);
@@ -1134,7 +1250,7 @@ ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here
         if( (PIN_BUTTON_DOWN == digitalRead(PIN_DIMMER)) && (PIN_BUTTON_UP == buttonDimmerPrev) )
         {
             // delay and check again for software debouncing (do not debounce ACzeroCross from ZeroCross Tail)
-            delay(DELAY_PUSHBTN_DELAY);
+//            delay(DELAY_PUSHBTN_DELAY);
             if(PIN_BUTTON_DOWN == digitalRead(PIN_DIMMER))
             {
                 loadDecreaseIntensity(currentNodeInfoIndex);
@@ -1193,11 +1309,16 @@ void loadZeroCrossing(void)
     uint8_t nodeIDnum= 0;
 
     // stop Timer1 so it doesn't accidentally trigger irq while we are in here
-    Timer1.stop();
+//    Timer1.stop();
 
     // set Timer1 to signal irq handler at timestep for next intensity level
-    Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
-    Timer1.restart();
+    // This should reset the Timer1 wherever it is and give a consistent
+    // timestep starting from here, at the beginning of an AC power half-cycle
+//    Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
+//    Timer1.restart();
+    Timer1.start();
+
+    digitalWrite(pinZeroCrossIRQ, HIGH);   // sets the debug pin "on"
 
     // on a Zero-cross trigger, start looking at FULL-ON intensity level, and decrement from there
     shIrqT1thisLevel = LOAD_INTENSITY_FULL_ON;
@@ -1205,7 +1326,7 @@ void loadZeroCrossing(void)
     // full-ON loads (should be ALWAYS on at this intensity level unless the IsPowered indicator says turned off)
     for (nodeIDnum=0; nodeIDnum<mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
     {
-        if( LOAD_INTENSITY_FULL_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
+        if( LOAD_INTENSITY_FULL_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent ) // sanity check
         {
             if( LOAD_POWERED_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeIsPowered )
             {
@@ -1218,23 +1339,13 @@ void loadZeroCrossing(void)
                 digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);
             }
         }
+        else if( (LOAD_INTENSITY_FULL_OFF >= mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent) || 
+                 (LOAD_POWERED_OFF == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeIsPowered) )
+        {
+            // if the load is OFF then turn off its AC relay PowerSSR Tail unit
+            digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);        
+        }
     }
-
-    if( (LOAD_INTENSITY_MIN < shIrqT1thisLevel) && (LOAD_INTENSITY_FULL_OFF < shIrqT1thisLevel) )
-    {
-        // decrement the intensity level for next timestep irq from Timer1
-        // This should only end up at LOAD_INTENSITY_FULL_ON - 1 here
-        shIrqT1thisLevel -= 1; // decrement as we start at full-on value 5 from Zero-Cross irq handler
-    }
-    else // at LOAD_INTENSITY_MIN / FULL-OFF
-    {
-        shIrqT1thisLevel = LOAD_INTENSITY_FULL_OFF;
-    }
-
-
-    // not starting a triac pulse, the always-on intensity loads never turn triac control off
-    shTriacPulse = NO;
-
 
     // Timer1 irqs should take it from here until next zero-cross event
 
@@ -1273,8 +1384,6 @@ void loadZeroCrossing(void)
             }
         }
     }
-
-
 
 
     // ----------------
@@ -1434,7 +1543,9 @@ void loadZeroCrossing(void)
     }
 #endif
 
-}
+    digitalWrite(pinZeroCrossIRQ, LOW);   // sets the debug pin "off"
+    
+} // loadZeroCrossing()
 
 
 // configure the Pin Change Interrupt things for detecting AC Zero Cross signal and user push buttons
@@ -1480,16 +1591,33 @@ void setupPCint(void)
 // IRQ handler for Timer1 events
 void irqT1triacTriggers(void)
 {
-    uint8_t _SHirqT1thisLevel = MAX; // init to max in the zero-cross handler for each period and decrement each time here
+    noInterrupts();
+    
+    uint8_t nodeIDnum= 0;  
 
     // stop Timer1 so does not accidentally trigger irq while we are in here
     Timer1.stop();
 
-    // set Timer1 to signal irq handler at timestep for next intensity level
-    Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
-    Timer1.restart();
+    if(LOAD_INTENSITY_FULL_OFF < shIrqT1thisLevel)
+    {
+        // set Timer1 to signal irq handler at timestep for next intensity level
+//        Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
+//        Timer1.restart();
+        Timer1.start();
+    }
 
-    switch(_SHirqT1thisLevel)
+    digitalWrite(pinTimer1irq, HIGH);   // sets the pin "on"
+
+#if 1
+//    Serial.print("[");
+//    Serial.print(shIrqT1thisLevel, DEC);
+////    Serial.print("-");
+//    Serial.print(shTriacPulse, DEC);
+//    Serial.print("]");
+//    Serial.print(".");
+#endif
+    
+    switch(shIrqT1thisLevel)
     {
         case LOAD_INTENSITY_FULL_ON: // don't expect to end up in here for FULL-ON loads, but do this as sanity check
             // full-ON loads (should be ALWAYS on at this intensity level unless the IsPowered indicator says turned off)
@@ -1500,7 +1628,7 @@ void irqT1triacTriggers(void)
                     if( LOAD_POWERED_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeIsPowered )
                     {
                        // these should not get turned off by triac, if full-ON
-                        digital Write(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_ON);
+                        digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_ON);
                     }
                     else  // LOAD_POWERED_OFF
                     {
@@ -1510,6 +1638,8 @@ void irqT1triacTriggers(void)
                 }
             }
 
+            shIrqT1thisLevel--;
+            
             break;
 
         case LOAD_INTENSITY_MED_HIGH:  // medium-high intensity loads - most intense while not full-ON
@@ -1517,81 +1647,68 @@ void irqT1triacTriggers(void)
         case LOAD_INTENSITY_MED_LOW:   // medium-low intensity loads
         case LOAD_INTENSITY_LOW:       // low intensity loads
 
-            if(shTriacPulse == YES)
-            {
-                // ending a triac fire pulse
+                // beginning a triac fire pulse for this intensity level
 
-                Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
-                Timer1.restart();
-
-                shTriacPulse= NO;
-
-
-// TODO need to also check for powered state to turn on triac pulse
-
-                // turn off triac control for any loads getting a triac pulse just now
+                // turn ON triac control for any loads getting a triac pulse for this intensity level
                 for (nodeIDnum=0; nodeIDnum<mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
                 {
-                    if( LOAD_INTENSITY_FULL_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
+                    if( shIrqT1thisLevel == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
                     {
                         if( LOAD_POWERED_ON == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeIsPowered )
                         {
-                            // these should not get turned off by triac, if full-ON
-                            digital Write(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_ON);
+                            // these should not get turned ON by triac at this time
+                            digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_ON);
                         }
                         else  // LOAD_POWERED_OFF
                         {
-                            // these should stay OFF by triac
+                            // these should be OFF by triac
                             digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);
                         }
                     }
                 }
 
-                shIrqT1thisLevel -= 1;
-            }
-            else // time to start a Triac fire pulse for any load set to this intensity level
-            {
-                // beginning a triac fire pulse for this intensity level
+                shIrqT1thisLevel--;                
 
-                Timer1.setPeriod(TRIAC_FIRE_PULSE_TIME);
-                Timer1.restart();
-
-                shTriacPulse= YES;
-
-                for (nodeIDnum=0; nodeIDnum<mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
-                {
-                    if( LOAD_INTENSITY_LOW == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
-                    {
-                        // Triac pulse ON
-                        digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_ON);
-                    }
-                }
-
-            } // if/else
-
+                // leave the trigger pulse on until we get to the FULL-OFF/MIN level check below, and turn them ALL off at that point
+                // while that point SHALL come BEFORE the next Zero-Cross trigger
             break;
 
         case LOAD_INTENSITY_FULL_OFF:  // full-OFF intensity loads
+
+//            Timer1.setPeriod(T1_LOAD_INTENSITY_TIMESTEP);
+//            Timer1.restart();
+
             for (nodeIDnum=0; nodeIDnum<mySHnodeMasterInfo.numNodeIDs; nodeIDnum++)
             {
-                if( shIrqT1thisLevel == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
+//                if( shIrqT1thisLevel == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
+                if( LOAD_INTENSITY_FULL_ON >= mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent )
                 {
-                    // Triac pulse OFF
+                    // turn Triac pulse OFF for ANYTHING, unless it is FULL-ON
                     digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);
                 }
             }
 
-            shIrqT1thisLevel = 0; // make sure to stay at level 0, no decrement to negative numbers
+            //shIrqT1thisLevel = 0; // make sure to stay at level 0, no decrement to negative numbers
+            shIrqT1thisLevel = LOAD_INTENSITY_MAX; // reset to MAX for next iteration through the set of shIrqT1thisLevel values (next half-period)
 
+            // do NOT restart the timer here, wait for Zero-Cross interrupt to start it during next half-cycle
+            
             // fallthrough to default
 
         default:
             //error - stay stopped from above
+            shIrqT1thisLevel = LOAD_INTENSITY_MIN; // reset to MIN for sanity
+            break;
 
         // case value levels
 
     } // switch
 
+    digitalWrite(pinTimer1irq, LOW);   // sets the pin "off"
+
+    interrupts();
+    
 } // irqT1triacTriggers()
+
 
 
