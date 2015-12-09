@@ -13,13 +13,20 @@
 
 #include <wx/app.h>
 #include <wx/file.h>
+#include <wx/log.h>
 
 #include <stdint.h>
 
 
-#define SH_SERV_APP_NAME "wxSmartHomeServer"
+//#define SH_SERV_APP_NAME "wxSmartHomeServer"
+const wxString SH_SERV_APP_NAME = "wxSmartHomeServer";
+const wxString SH_SERV_APP_PATH_ROOT = "/home/smarthome/.wxSmartHome";
+
+//const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
 
 #include "wxSmartHomeServerMain.h"
+
+
 
 
 class wxSmartHomeServerApp : public wxApp
@@ -30,8 +37,8 @@ class wxSmartHomeServerApp : public wxApp
 
     private:
         wxSmartHomeServerFrame* Frame;
-        size_t shLogFileumLinesPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
-        size_t shLogFileLengthPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
+        size_t _shLogFileNumLinesPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
+        size_t _shLogFileLengthPrev = 0; // number of bytes in the SmartHome Control Event log file from the last time we checked
         wxString _shCurrentDateTime;
         wxString _shCurrentDay;
         wxString _shCurrentMonth;

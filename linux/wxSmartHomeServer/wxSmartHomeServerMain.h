@@ -26,6 +26,7 @@
 #include <wx/textctrl.h>
 #include <wx/statbmp.h>
 #include <wx/log.h>
+#include <wx/file.h>
 //*)
 
 
@@ -44,6 +45,15 @@ class wxSmartHomeServerFrame: public wxFrame
         wxTextCtrl* shTextCtrlCurrentDate;
         wxTextCtrl* shTextCtrlCurrentTime;
 
+        //#define SH_DEBUG_LOG_FILENAME  "/home/billt/shDebugLog.log"
+        const wxString SH_DEBUG_LOG_FILENAME  = "/home/billt/shDebugLog.log";
+//        const wxString *PTR_SH_DEBUG_LOG_FILENAME = &SH_DEBUG_LOG_FILENAME;
+        wxFile shDebugLogFile;
+
+        const char* SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
+        shSerialPort  shServerSerialPort = shSerialPort( SH_SERIAL_ZB_FILENAME );
+//        shSerialPort  shServerSerialPort = shSerialPort();
+
         wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id = -1);
         virtual ~wxSmartHomeServerFrame();
 
@@ -59,8 +69,6 @@ class wxSmartHomeServerFrame: public wxFrame
         uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan
         FILE       *FILEshEventsLog;
 
-        shSerialPort  shServerSerialPort = shSerialPort( _SH_SERVER_SERIAL_PORT_NAME );
-//        shSerialPort  shServerSerialPort = shSerialPort();
 
 
         // nodeInfo struct of the currently selected target load to be controlled

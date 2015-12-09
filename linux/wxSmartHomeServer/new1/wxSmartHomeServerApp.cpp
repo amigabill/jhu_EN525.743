@@ -19,7 +19,10 @@
 #include <wx/log.h>
 //*)
 
-const wxString SH_CTRL_EVENT_LOG_FILENAME = "/home/smarthome/.wxSmartHome/shEvents.log";
+//#include "shLinuxSerialPort.h
+//shSerialPort mySHserverSerial = shSerialPort();
+
+#define SH_CTRL_EVENT_LOG_FILENAME  (wxString)"/home/smarthome/.wxSmartHome/shEvents.log"
 
 
 IMPLEMENT_APP(wxSmartHomeServerApp);
@@ -27,7 +30,6 @@ IMPLEMENT_APP(wxSmartHomeServerApp);
 BEGIN_EVENT_TABLE(wxSmartHomeServerApp, wxApp)
    EVT_IDLE(wxSmartHomeServerApp::OnIdle)
 END_EVENT_TABLE()
-
 
 
 bool wxSmartHomeServerApp::OnInit()
@@ -41,19 +43,10 @@ bool wxSmartHomeServerApp::OnInit()
     	Frame = new wxSmartHomeServerFrame(0);
     	Frame->Show();
     	SetTopWindow(Frame);
-
-//    	shServerSerialPort.start(9600);
     }
     //*)
 
-
-    // for some reason wxLogDebug() causes seg faults
-    //wxLogDebug( wxT("Testing wxDebugLog() call\n") );
-
-//    Frame->shDebugLogFile.Open( SH_DEBUG_LOG_FILENAME, wxFile::write);
-//    Frame->shDebugLogFile.Write("Testing debug log output\n");
-
-   // update GUI display with current time
+    // update GUI display with current time
     SHupdateGUItimeText();
 
 //    wxLogMessage( shCurrentDateTime[11] ) ;
@@ -84,12 +77,8 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
     // update GUI display with current time
     SHupdateGUItimeText();
 
-
-    // make sure to have another idle event to come into here again
-    if( IsMainLoopRunning() )
-    {
+    if(IsMainLoopRunning())
         event.RequestMore();
-    }
 }
 
 
@@ -97,12 +86,10 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
 {
     #define SH_LOG_FILE_MAX_LINE_LENGTH 200
-#if 1
-    size_t i=0, shLogFileNumLinesCurr=0;
-    wxFile shLogFile;
-    wxUint8 thisChar[1];
 
-    shLogFile.Open(shLogFileName, wxFile::read);
+    size_t i=0, shLogFileumLinesCurr=0;
+    wxFile shLogFile(shLogFileName, wxFile::read);
+    wxUint8 thisChar[1];
 
 
 //    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
@@ -114,14 +101,14 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
     }
 
 
-    wxFileOffset shLogFileLengthCurr = shLogFile.Length();
-    if( shLogFileLengthCurr == wxInvalidOffset )
+    wxFileOffset shLogFileLength = shLogFile.Length();
+    if( shLogFileLength == wxInvalidOffset )
     {
         // file is of some invalid size for some reason
         return false;
     }
 
-    if(shLogFileLengthCurr == _shLogFileLengthPrev)
+    if(shLogFileLength == shLogFileLengthPrev)
     {
         // no change in file size, assume no change to log since last check.
         // This is not a problem, just nothing to do this time around.
@@ -157,10 +144,8 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
     }
 
     // save current log file length for comparison next time around
-    _shLogFileLengthPrev = shLogFileLengthCurr;
+    shLogFileLengthPrev = shLogFileLength;
 
-    shLogFile.Close();
-#endif // 0
     // all good at this point
     return true;
 }
@@ -193,15 +178,17 @@ uint8_t wxSmartHomeServerApp::SHupdateGUItimeText(void)
 //    wxLogMessage( "Full Date = %s", _shCurrentFullDate ) ;
 
     _shCurrentTime = _shCurrentDateTime.SubString(11, 18);
-//    wxLogMessage( "Time = %s", _shCurrentTime ) ;
+    wxLogMessage( "Time = %s", _shCurrentTime ) ;
+
+    // wxDateTime struct may be easier than the above? - Not really
+//    wxLogMessage( "Time = %s", _shCurrentDateTime2. ) ;
 
 
     // Clear out the GUI log fie text area before refreshing the text content,
     // in order to avoid duplicated sets before the final new line(s) at the bottom
-    Frame->shTextCtrlCurrentDate->Clear();
-    Frame->shTextCtrlCurrentDate->AppendText(_shCurrentDayFullDate);
-    Frame->shTextCtrlCurrentTime->Clear();
-    Frame->shTextCtrlCurrentTime->AppendText(_shCurrentTime);
+//    Frame->shTextCtrlEvtlog->Clear();
+    Frame->shStaticTextCurrentTime->();
+
 
       // all good at this point
     return true;

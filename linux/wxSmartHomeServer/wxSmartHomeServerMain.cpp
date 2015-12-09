@@ -133,12 +133,8 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     shTextCtrlEvtlog->SetMaxSize(wxSize(-1,-1));
     shTextCtrlEvtlog->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
     shTextCtrlEvtlog->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
-//    shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,24), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE_SH_LD"));
     shIntensityGauge = new wxGauge(shPanel1, ID_GAUGE_SH_LD, 100, wxPoint(8,102), wxSize(28,172), wxGA_VERTICAL, wxDefaultValidator, _T("ID_GAUGE1"));
     shIntensityGauge->SetValue(30);
-//    shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
-//    shBMPbuttonFAV = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_FAV, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP"))), wxPoint(48,80), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_FAV"));
-//    shBMPbuttonDWN = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_DWN, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP"))), wxPoint(64,152), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_DWN"));
     shBMPbuttonUP = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_UP, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP"))), wxPoint(64,94), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_UP"));
     shBMPbuttonFAV = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_FAV, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP"))), wxPoint(48,158), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_FAV"));
     shBMPbuttonDWN = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_DWN, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP"))), wxPoint(64,230), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_DWN"));
@@ -146,14 +142,10 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     StaticText1->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
     StaticLine1 = new wxStaticLine(shPanel1, ID_STATICLINE1, wxPoint(272,40), wxSize(560,16), wxLI_HORIZONTAL, _T("ID_STATICLINE1"));
     StaticLine1->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_ACTIVECAPTION));
-//    shBMPbuttonON = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_ON, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp"))), wxPoint(152,16), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_ON"));
-//    shBMPbuttonOFF = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_OFF, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP"))), wxPoint(152,112), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTONSH_OFF"));
-//    shBMPbtnRoomLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,282), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_LFT"));
     shBMPbuttonON = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_ON, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp"))), wxPoint(152,94), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_ON"));
     shBMPbuttonOFF = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_OFF, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP"))), wxPoint(152,190), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTONSH_OFF"));
     shBMPbtnRoomLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,300), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_LFT"));
     shBMPbtnLoadLeft = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_LD_LFT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP"))), wxPoint(16,386), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_LD_LFT"));
-//    shBMPbtnRoomRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,282), wxDefaultSize, wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_RT"));
     shBMPbtnRoomRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_RM_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,300), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_RM_RT"));
     shBMPbtnLoadRight = new wxBitmapButton(shPanel1, ID_BITMAPBUTTON_SH_LD_RT, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP"))), wxPoint(191,386), wxDefaultSize, wxBU_AUTODRAW|wxNO_BORDER, wxDefaultValidator, _T("ID_BITMAPBUTTON_SH_LD_RT"));
     shCheckBoxIsHome1 = new wxCheckBox(shPanel1, ID_CHECKBOX_SH_HM1, _("Home 1"), wxPoint(296,448), wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX_SH_HM1"));
@@ -161,34 +153,10 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     shCheckBoxIsHome2 = new wxCheckBox(shPanel1, ID_CHECKBOX_SH_HM2, _("Home 2"), wxPoint(392,448), wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX_SH_HM2"));
     shCheckBoxIsHome2->SetValue(false);
 
-
-//    shStaticTextRoomName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_RM_NAME, _("Bedroom 1"), wxPoint(80,304), wxSize(120,20), wxALIGN_CENTRE|wxNO_BORDER, _T("ID_STATICTEXT_SH_RM_NAME"));
-//    shStaticTextRoomName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_RM_NAME, _("Bedroom 1"), wxPoint(80,322), wxSize(120,20), wxALIGN_CENTRE, _T("ID_STATICTEXT_SH_RM_NAME"));
-//    shStaticTextRoomName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-//    shStaticTextLoadName = new wxStaticText(shPanel1, ID_STATICTEXT_SH_LD_NAME, _("Fan 1"), wxPoint(80,410), wxSize(120,20), wxALIGN_CENTRE, _T("ID_STATICTEXT_SH_LD_NAME"));
-//    shStaticTextLoadName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-
-
-//    StaticBitmap1 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP1, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,288), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP1"));
-//    StaticBitmap2 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP2, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,336), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP2"));
     StaticBitmap1 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP1, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,306), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP1"));
     StaticBitmap2 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP2, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,354), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP2"));
     StaticBitmap3 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP3, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,392), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP3"));
     StaticBitmap4 = new wxStaticBitmap(shPanel1, ID_STATICBITMAP4, wxBitmap(wxImage(_T("/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP"))), wxPoint(80,440), wxDefaultSize, wxSIMPLE_BORDER, _T("ID_STATICBITMAP4"));
-
-
-#if 0
-//    shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _(" Current Time"), wxPoint(50,60), wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL2"));
-    shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _(" Current Time"), wxPoint(50,60), wxSize(20,250), wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL2"));
-    shTextCtrlCurrentTime->SetMinSize(wxSize(150,20));
-    shTextCtrlCurrentTime->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
-    shTextCtrlCurrentTime->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-//    shTextCtrlCurrentDate = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURDATE, _(" Current Date "), wxPoint(50,20), wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURDATE"));
-    shTextCtrlCurrentDate = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURDATE, _(" Current Date "), wxPoint(50,20), wxSize(20,250), wxTE_READONLY|wxTE_LEFT, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURDATE"));
-    shTextCtrlCurrentDate->SetMinSize(wxSize(150,20));
-    shTextCtrlCurrentDate->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
-    shTextCtrlCurrentDate->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-#endif
 
     shTextCtrlCurrentTime = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_CURTIME, _("23:59:59"), wxPoint(50,60), wxDefaultSize, wxTE_READONLY|wxTE_LEFT|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_CURTIME"));
     shTextCtrlCurrentTime->SetMinSize(wxSize(250,20));
@@ -231,13 +199,17 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     BoxSizer1->Fit(this);
     BoxSizer1->SetSizeHints(this);
 
-    Connect(ID_BITMAPBUTTON_SH_RM_RT,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick);
-    Connect(idMenuQuit,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnQuit);
-    Connect(idMenuAbout,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnAbout);
+//    Connect(ID_BITMAPBUTTON_SH_RM_RT,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick);
+//    Connect(idMenuQuit,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnQuit)////;
+//    Connect(idMenuAbout,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnAbout);
     //*)
 
+    shDebugLogFile.Open( SH_DEBUG_LOG_FILENAME, wxFile::write);
+    shDebugLogFile.Write("Testing debug log output\n");
 
-//    SHinitServerNodeInfo();
+    // initialize the Server Node Info struct data
+    SHinitServerNodeInfo();
+
     // initialize default load Node Info struct data
     SHinitLoadNodeInfo();
 
@@ -245,7 +217,7 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     shServerSerialPort.start(9600);
 
     // test for debugging to see if serial is alive
-    //shServerSerialPort
+//    shServerSerialPort.txSend('d');
 
     // open the SmartHome events log file for reading AND writing, create file if necessary
     #define FILENAME_SH_EVENTS_LOG "/home/smarthome/.wxSmartHome/shEvents.log"
@@ -257,18 +229,23 @@ wxSmartHomeServerFrame::~wxSmartHomeServerFrame()
     //(*Destroy(wxSmartHomeServerFrame)
     //*)
 
-    // close Boost-asio serial port
+    // close serial port
+    shServerSerialPort.stop();
 
     // close any network sockets
 
 
-    // close the SmartHome events log file
+    // close the SmartHome events log text file
     fclose(FILEshEventsLog);
+
+    // close the debug log text file
+    shDebugLogFile.Close();
 }
 
 void wxSmartHomeServerFrame::OnQuit(wxCommandEvent& event)
 {
-    // close Boost-asio serial port
+    // close serial port
+    shServerSerialPort.stop();
 
     // close any network sockets
 
@@ -495,12 +472,18 @@ void wxSmartHomeServerFrame::SHguageDrawCurrentIntensity(void)
 
 #if 1
 // Initialize the currentNodeInfo struct based on data in the default load for this server from file
+// DEBUG seg fault from this function call when using file access, changed to hardcoded values works
+//       and hardcode is OK in cae of server due to specially assigned node ID value and type value
+// change to wxFile type file access instead, if time allows
 void wxSmartHomeServerFrame::SHinitServerNodeInfo(void)
 {
     // files to read data from
 //    ifstream FILEserverNodeID;
     FILE  *FILEserverNodeID;
 
+//    shDebugLogFile.Write("In SHinitServerNodeInfo()\n");
+
+#if 0
     #define FILENAME_SERVER_NODEINFO  "/home/smarthome/.wxSmartHome/SERVER.BIN"
 //    FILEserverNodeID.open(FILENAME_SERVER_NODEINFO, (ios::in | ios::binary) );
     FILEserverNodeID = fopen(FILENAME_SERVER_NODEINFO, FILE_READ);
@@ -512,6 +495,11 @@ void wxSmartHomeServerFrame::SHinitServerNodeInfo(void)
 
 //    FILEserverNodeID.close();
     fclose(FILEserverNodeID);
+#endif // 0
+
+    ptrThisNodeID[1] = (uint8_t)0x00;  // server node ID is special value of 0
+    ptrThisNodeID[0] = (uint8_t)0x00;
+    shThisNodeType = SH_NODE_TYPE_SERVER;
 }
 
 
@@ -619,27 +607,3 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
 
 }
 
-
-#if 0 // move to App, out of Main
-// Do something on an Idle event
-// This is where our non-GUI "loop" will happen, such as
-// to check on serial input form Zigbee, refresh the log file etc.
-void wxSmartHomeServerFrame::OnIdle(wxIdleEvent &event)
-{
-    /* ... */
-    wxLogMessage( "In wxSmartHomeServerFrame::OnIdle" ) ;
-
-
-    // check if a new Zigbee frame/SmartHome message has been received an dprocess it
-
-    // check if a new Zigbee frame/SmartHome message is ready to send out
-
-    // check if the SmartHome event log file has been updated,
-    // and write new content to LCD display text area
-
-
-
-    if(IsMainLoopRunning())
-        event.RequestMore();
-}
-#endif

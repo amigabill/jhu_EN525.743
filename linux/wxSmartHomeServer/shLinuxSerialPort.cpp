@@ -28,10 +28,14 @@
 //shSerialPort::shSerialPort(std::string portName, unsigned int baud_rate)
 shSerialPort::shSerialPort(const char* portName)
 {
+//    wxString wxPortName = portName;
+
     sprintf(_shSerialPortName, "%s", portName);
-//    shSerialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NDELAY);
+    _shSerialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NDELAY);
     _FILEshSerialPortRX = fopen(portName, "r");
     _FILEshSerialPortTX = fopen(portName, "w");
+
+//    g_shSerialPortZBwxFile.Open( wxPortName, wxFile::read_write);
 
 //	FILE *input;
 //	FILE *output;
@@ -73,11 +77,18 @@ bool shSerialPort::start(unsigned int baud_rate)
     //shSerialPortName
 //    sprintf( _shSerialPortName, "%s", portName);
 
-    _shSerialPortFD = open(_shSerialPortName, O_RDWR | O_NOCTTY | O_NDELAY);
+//    _shSerialPortFD = open(_shSerialPortName, O_RDWR | O_NOCTTY | O_NDELAY);
 
     sprintf( sttyCmd, "stty -F %s %d cs8 cread clocal", _shSerialPortName, baud_rate );
     system(sttyCmd);
 //    system("stty -F /dev/ttyUSB0 9600 cs8 cread clocal");
+
+//    _shSerialPortZBwxFile.Open(SH_SERIAL_ZB_FILENAME, wxFile::read_write);
+
+    uint8_t zbBufferTX[30] = {0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0xAE };
+    write(_shSerialPortFD, (char *)zbBufferTX, 30);//write to port
+
+//g_shSerialPortZBwxFile.Write(zbBufferTX, 30);
 
     return true;
 }
@@ -90,32 +101,45 @@ void shSerialPort::stop(void)
     close(_shSerialPortFD);
     fclose(_FILEshSerialPortTX);
     fclose(_FILEshSerialPortRX);
+
+//    _shSerialPortZBwxFile.Close();
 }
 
 
-#if 1
 // say if rxBuffer contains a new Zigbee frame/SmartHome message
 // will be used? or use variable?
 bool shSerialPort::rxAvailable(void)
 {
     int bytes_avail = 0;
+//    wxFileOffset bytes_avail = 0;
 
     ioctl(_shSerialPortFD, FIONREAD, &bytes_avail);
 
+//    bytes_avail = _shSerialPortZBwxFile.Length();
     return( bytes_avail > 0 );
 }
-#endif
 
 
+// receive a single byte form serial port
+// serial port should already be open and configured as a file descriptor style access
+// from one of /dev/tty* devices
 uint8_t rxReceive(void)
 {
-    char charRX;
+    uint8_t charRX[1];
 
-    return(0);
+//    _shSerialPortZBwxFile.Read(charRX, (size_t)1);
+
+    return( charRX[0] );
 }
 
-// transmit the content of
-uint8_t shSerialPort::txSend(char charTX)
+
+// transmit the content of the given message via serial port.
+// Serial port should be already open and configured as a file descriptor style access
+// to one of /dev/tty* devices
+uint8_t shSerialPort::txSend(uint8_t charTX)
 {
-    write(_shSerialPortFD, &charTX, 1);//write to port
+    //write(_shSerialPortFD, &charTX, 1);//write to port
+    uint8_t zbBufferTX[30] = {0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0xAE };
+    write(_shSerialPortFD, (char *)zbBufferTX, 30);//write to port
+//    _shSerialPortZBwxFile.Write(zbBufferTX, 30);
 }

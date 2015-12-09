@@ -18,6 +18,9 @@
  * License:
  **************************************************************/
 
+#include <wx/string.h>
+#include <wx/file.h>
+
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -40,12 +43,15 @@
 #define SH_SERVER_SERIAL_FLOW_CTRL  boost::asio::serial_port_base::flow_control::none
 #endif
 
+//const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
+//wxFile g_shSerialPortZBwxFile;
 
 class shSerialPort
 {
     public:
         uint8_t ZBfrmReadyTX = 0; // a Zigbee frame is ready to transmit
         uint8_t ZBfrmReadyRX = 0; // a Zigbee frame has been received
+
 
         // constructor
 //        shSerialPort(void);
@@ -68,21 +74,28 @@ class shSerialPort
         bool rxAvailable(void);
 
 //        // read a byte
-        uint rxReceive(void);
+        uint8_t rxReceive(void);
 
         // transmit the content of
-        uint8_t txSend(char charTX);
+        uint8_t txSend(uint8_t charTX);
+
 
     private:
-//            boost::asio::io_service _ioService;
-//            boost::asio::serial_port _shSerial;
+//        boost::asio::io_service _ioService;
+//        boost::asio::serial_port _shSerial;
 //        std::string  shSerialPortName[20];
+
+//        const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
+//        wxFile _shSerialPortZBwxFile();
+
         char         _shSerialPortName[20];
         FILE         *_FILEshSerialPortRX;
         FILE         *_FILEshSerialPortTX;
         int          _shSerialPortFD;
         uint8_t      _txBuffer[ZB_TX_FRM_BYTES];  // buffer to hold Zigbee frame/SmartHome message to send
         uint8_t      _rxBuffer[ZB_RX_FRM_BYTES];  // buffer to receive a Zigbee frame/Smarthome message into
+
+
 
         // callback function for boost library's async_read to call upon
         // we will do async_read with size of 1 byte, check that byte, and if a Zigbee delimiter char then read the

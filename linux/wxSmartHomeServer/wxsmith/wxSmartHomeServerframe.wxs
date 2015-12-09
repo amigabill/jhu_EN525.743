@@ -17,23 +17,23 @@
 					</object>
 					<object class="wxGauge" name="ID_GAUGE1" variable="shIntensityGauge" member="yes">
 						<value>30</value>
-						<pos>8,24</pos>
+						<pos>8,102</pos>
 						<size>28,172</size>
 						<style>wxGA_VERTICAL</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_UP" variable="shBMPbuttonUP" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/UP.BMP</bitmap>
-						<pos>64,16</pos>
+						<pos>64,94</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_FAV" variable="shBMPbuttonFAV" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/FAV.BMP</bitmap>
-						<pos>48,80</pos>
+						<pos>48,158</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_DWN" variable="shBMPbuttonDWN" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/DOWN.BMP</bitmap>
-						<pos>64,152</pos>
+						<pos>64,230</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxStaticText" name="ID_STATICTEXT1" variable="StaticText1" member="yes">
@@ -48,17 +48,17 @@
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_ON" variable="shBMPbuttonON" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/ON.bmp</bitmap>
-						<pos>152,16</pos>
+						<pos>152,94</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTONSH_OFF" variable="shBMPbuttonOFF" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/OFF.BMP</bitmap>
-						<pos>152,112</pos>
+						<pos>152,190</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_RM_LFT" variable="shBMPbtnRoomLeft" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTLFT.BMP</bitmap>
-						<pos>16,282</pos>
+						<pos>16,300</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_LD_LFT" variable="shBMPbtnLoadLeft" member="yes">
@@ -68,7 +68,7 @@
 					</object>
 					<object class="wxBitmapButton" name="ID_BITMAPBUTTON_SH_RM_RT" variable="shBMPbtnRoomRight" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/RLBUTRIT.BMP</bitmap>
-						<pos>191,282</pos>
+						<pos>191,300</pos>
 						<style>wxBU_AUTODRAW|wxNO_BORDER</style>
 						<handler function="OnshBMPbtnRoomRightClick" entry="EVT_BUTTON" />
 					</object>
@@ -85,27 +85,13 @@
 						<label>Home 2</label>
 						<pos>392,448</pos>
 					</object>
-					<object class="wxStaticText" name="ID_STATICTEXT_SH_RM_NAME" variable="shStaticTextRoomName" member="yes">
-						<label>Bedroom 1</label>
-						<pos>80,304</pos>
-						<size>120,20</size>
-						<fg>wxSYS_COLOUR_HIGHLIGHTTEXT</fg>
-						<style>wxALIGN_CENTRE</style>
-					</object>
-					<object class="wxStaticText" name="ID_STATICTEXT_SH_LD_NAME" variable="shStaticTextLoadName" member="yes">
-						<label>Fan 1</label>
-						<pos>80,410</pos>
-						<size>120,20</size>
-						<fg>wxSYS_COLOUR_HIGHLIGHTTEXT</fg>
-						<style>wxALIGN_CENTRE</style>
-					</object>
 					<object class="wxStaticBitmap" name="ID_STATICBITMAP1" variable="StaticBitmap1" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
-						<pos>80,288</pos>
+						<pos>80,306</pos>
 					</object>
 					<object class="wxStaticBitmap" name="ID_STATICBITMAP2" variable="StaticBitmap2" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
-						<pos>80,336</pos>
+						<pos>80,354</pos>
 					</object>
 					<object class="wxStaticBitmap" name="ID_STATICBITMAP3" variable="StaticBitmap3" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
@@ -114,6 +100,38 @@
 					<object class="wxStaticBitmap" name="ID_STATICBITMAP4" variable="StaticBitmap4" member="yes">
 						<bitmap>/home/billt/projects/jhu_EN525.743/arduino/SDcard_tmpl8s/TMPL8LN.BMP</bitmap>
 						<pos>80,440</pos>
+					</object>
+					<object class="wxTextCtrl" name="ID_TEXTCTRL2" variable="shTextCtrlCurrentTime" member="yes">
+						<value>23:59:59</value>
+						<pos>50,60</pos>
+						<fg>wxSYS_COLOUR_BTNFACE</fg>
+						<bg>wxSYS_COLOUR_INFOBK</bg>
+						<minsize>150,20</minsize>
+					</object>
+					<object class="wxTextCtrl" name="ID_TEXTCTRL_SH_CURDATE" variable="shTextCtrlCurrentDate" member="yes">
+						<value>Mon, Dec 01, 2015 </value>
+						<pos>50,20</pos>
+						<fg>wxSYS_COLOUR_BTNFACE</fg>
+						<bg>wxSYS_COLOUR_INFOBK</bg>
+						<minsize>150,20</minsize>
+						<style>wxTE_READONLY|wxTE_LEFT|wxNO_BORDER</style>
+						<handler function="OnshTextCtrlCurrentDateText" entry="EVT_TEXT" />
+					</object>
+					<object class="wxTextCtrl" name="ID_TEXTCTRL_SH_ROOMNAME" variable="shTextCtrlRoomName" member="yes">
+						<value>Room Name</value>
+						<pos>80,320</pos>
+						<fg>wxSYS_COLOUR_BTNFACE</fg>
+						<bg>wxSYS_COLOUR_INFOBK</bg>
+						<minsize>100,20</minsize>
+						<style>wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER</style>
+					</object>
+					<object class="wxTextCtrl" name="ID_TEXTCTRL_SH_LOADNAME" variable="shTextCtrlLoadName" member="yes">
+						<value>Load Name</value>
+						<pos>88,408</pos>
+						<fg>wxSYS_COLOUR_BTNFACE</fg>
+						<bg>wxSYS_COLOUR_INFOBK</bg>
+						<minsize>100,20</minsize>
+						<style>wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER</style>
 					</object>
 				</object>
 				<flag>wxALL|wxEXPAND|wxFIXED_MINSIZE|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL</flag>

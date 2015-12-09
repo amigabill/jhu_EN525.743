@@ -17,6 +17,7 @@
 #define SH_NODE_TYPE_SERVER  0x00  // Linux Server (NOT an Arduino platform)
 #define SH_NODE_TYPE_TARGET  0x01  // Target, has Triacs/PowerTail, NO LCD
 #define SH_NODE_TYPE_CNTRL   0x02  // Wall "switch" controller, has LCD, uSD
+#define SH_NODE_TYPE_MOBILE  0x03  // Android mobile device, accessing server node via internet
 
 
 #define ROOM_FIRST (uint16_t)0
