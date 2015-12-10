@@ -83,7 +83,7 @@ typedef struct
 #define SH_CMD_LOAD_READCRNT     (uint8_t)0x08 // read the current active intensity at target load (brightness/speed)
 #define SH_CMD_LOAD_READPWR      (uint8_t)0x09 // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
 #define SH_CMD_LOAD_TOGLPWR      (uint8_t)0x0a // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
-#define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // decrease intensity at target load (dimmer/slower)
+//#define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // tell server about an event, deprecated
 
 #define SH_POWERED_OFF (uint8_t)0x00
 #define SH_POWERED_ON  (uint8_t)0x01
@@ -130,7 +130,7 @@ typedef struct
     volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
     volatile uint8_t  SHcommand;    // 8bit Smarthome command
     volatile uint8_t  SHstatusH;    // Status value 2 / High Byte of 16bit Smarthome
-    volatile uint8_t  SHstatusL;    // Status value 1 / Low byte of 16bbit Smarthome
+    volatile uint8_t  SHstatusL;    // Status value 1 / Low Byte of 16bit Smarthome
     volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
     volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
     volatile uint8_t  SHreserved2;  // 8bit Smarthome message type

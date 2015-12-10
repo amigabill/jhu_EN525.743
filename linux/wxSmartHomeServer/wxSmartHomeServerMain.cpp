@@ -21,6 +21,8 @@
 #include <wx/msgdlg.h>
 //*)
 
+#include "SmartHomeServerAppDetails.h"
+
 
 // basic file operations
 #include <iostream>
@@ -214,7 +216,7 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     SHinitLoadNodeInfo();
 
     // start the serial port with SmartHome system Zigbee settings
-    shServerSerialPort.start(9600);
+//    shServerSerialPort.start(9600);
 
     // test for debugging to see if serial is alive
 //    shServerSerialPort.txSend('d');
@@ -230,7 +232,7 @@ wxSmartHomeServerFrame::~wxSmartHomeServerFrame()
     //*)
 
     // close serial port
-    shServerSerialPort.stop();
+//    shServerSerialPort.stop();
 
     // close any network sockets
 
@@ -245,7 +247,7 @@ wxSmartHomeServerFrame::~wxSmartHomeServerFrame()
 void wxSmartHomeServerFrame::OnQuit(wxCommandEvent& event)
 {
     // close serial port
-    shServerSerialPort.stop();
+//    shServerSerialPort.stop();
 
     // close any network sockets
 
@@ -268,7 +270,7 @@ void wxSmartHomeServerFrame::OnAbout(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('R');
+//    shServerSerialPort.txSend('R');
 
     wxLogMessage( "Button Room Right" ) ;
 }
@@ -276,7 +278,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('L');
+//    shServerSerialPort.txSend('L');
 
     wxLogMessage( "Button Room Left" ) ;
 }
@@ -284,7 +286,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('r');
+//    shServerSerialPort.txSend('r');
 
     wxLogMessage( "Button Load Right" ) ;
 }
@@ -292,7 +294,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('l');
+//    shServerSerialPort.txSend('l');
 
     wxLogMessage( "Button Load Left" ) ;
 }
@@ -301,7 +303,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('I');
+//    shServerSerialPort.txSend('I');
 
     wxLogMessage( "Button Up Inc Intensity" ) ;
 
@@ -339,7 +341,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('F');
+//    shServerSerialPort.txSend('F');
 
     wxLogMessage( "Button FAVorite Intensity = %d", shCurrentLoadNodeInfo.SHthisNodeLevelFav ) ;
 
@@ -360,9 +362,11 @@ void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 {
     // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('D');
+ //   shServerSerialPort.txSend('D');
 
     wxLogMessage( "Button Down Dec Intensity" ) ;
+
+//TODO - do not mak ecurrInt = OFF, leave it one step above, so ON button has someplace to go that isn't still OFF level
 
     if(shCurrentLoadNodeInfo.SHthisNodeLevelCurrent <= LOAD_INTENSITY_MIN)
     {
@@ -390,38 +394,76 @@ void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 // Have an ON button event
 void wxSmartHomeServerFrame::OnshBMPbtnOnClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('1');
+//    wxLogMessage( "Button On" ) ;
+    if(  NO == shCurrentLoadNodeInfo.SHthisNodeIsPowered )
+    {
+        // don't turn on to an OFF intensity level, turn on to first level above OFF
+        if(LOAD_INTENSITY_FULL_OFF >= shCurrentLoadNodeInfo.SHthisNodeLevelCurrent)
+        {
+            shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = LOAD_INTENSITY_FULL_OFF + 1;
+        }
 
-    wxLogMessage( "Button On" ) ;
+        shCurrentLoadNodeInfo.SHthisNodeIsPowered = YES;
+//        shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
-    shCurrentLoadNodeInfo.SHthisNodeIsPowered = YES;
+        // Fill TX frame payload (SH message) with current message values
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID;  //SHothrID is the message sender, which is this server
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_ON;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = shCurrentLoadNodeInfo.SHthisNodeIsPowered;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = shCurrentLoadNodeInfo.SHthisNodeLevelCurrent;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
 
-    // send new level and powered state to the load via Zigbee
+        // Set the xmitReady flag in the nodeinfo structure set above
+        shCurrentLoadNodeInfo.newSHmsgTX = YES;
+        shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
-
-    // update the local level/intensity guage on LCD
-    SHguageDrawCurrentIntensity();
-
-
+        // update the local level/intensity guage on LCD
+        SHguageDrawCurrentIntensity();
+    }
+//    wxLogMessage( "Button On" ) ;
 }
 
 
 // Have an OFF button event
 void wxSmartHomeServerFrame::OnshBMPbtnOffClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-    shServerSerialPort.txSend('0');
+    if(  YES == shCurrentLoadNodeInfo.SHthisNodeIsPowered )
+    {
+        shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO; //SH_POWERED_OFF;
+//        shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
-    wxLogMessage( "Button Off" ) ;
+        // Fill TX frame payload (SH message) with current message values
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_OFF;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = shCurrentLoadNodeInfo.SHthisNodeIsPowered; //SH_POWERED_OFF;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = shCurrentLoadNodeInfo.SHthisNodeLevelCurrent;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
 
-    shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO;
+        // Set the xmitReady flag in the nodeinfo structure set above
+        shCurrentLoadNodeInfo.newSHmsgTX = YES;
+        shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
-    // send new level and powered state to the load via Zigbee
+        // update the local level/intensity guage on LCD
+        SHguageDrawCurrentIntensity();
 
-
-    // update the local level/intensity guage on LCD
-    SHguageDrawCurrentIntensity();
+        wxLogMessage( "Button Off" ) ;
+    }
 }
 
 
@@ -595,15 +637,16 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
     shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
     shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
     shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
     shCurrentLoadNodeInfo.newSHmsgTX = NO;
     shCurrentLoadNodeInfo.newSHmsgRX = NO;
 
     // ask via Zigbee what these values are
     shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO;
-    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 0;
-    shCurrentLoadNodeInfo.SHthisNodeLevelFav = 3;
+    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 4; //0;
+    shCurrentLoadNodeInfo.SHthisNodeLevelFav = 2;
 
-    wxLogMessage( "Default Load ID = 0x%x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
+    wxLogMessage( "Default Load ID = 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 
 }
 

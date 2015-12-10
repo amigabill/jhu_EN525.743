@@ -32,7 +32,9 @@
 
 #include <stdint.h>
 
-#include "SmartHome_Zigbee.h"
+#include "SmartHomeServerAppDetails.h"
+
+#include "SmartHome_Zigbee_Linux.h"
 #include "SmartHome_NodeInfo.h"
 
 #include "shLinuxSerialPort.h"
@@ -41,38 +43,45 @@
 class wxSmartHomeServerFrame: public wxFrame
 {
     public:
+        uint16_t    shThisNodeID = 0;
+
         wxTextCtrl* shTextCtrlEvtlog;
         wxTextCtrl* shTextCtrlCurrentDate;
         wxTextCtrl* shTextCtrlCurrentTime;
+        wxGauge*    shIntensityGauge;
+
+//        SHzigbee mySHzigbee = SHzigbee();
 
         //#define SH_DEBUG_LOG_FILENAME  "/home/billt/shDebugLog.log"
         const wxString SH_DEBUG_LOG_FILENAME  = "/home/billt/shDebugLog.log";
 //        const wxString *PTR_SH_DEBUG_LOG_FILENAME = &SH_DEBUG_LOG_FILENAME;
         wxFile shDebugLogFile;
 
-        const char* SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
-        shSerialPort  shServerSerialPort = shSerialPort( SH_SERIAL_ZB_FILENAME );
+//        const char* SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
+//        shSerialPort  shServerSerialPort = shSerialPort( SH_SERIAL_ZB_FILENAME );
 //        shSerialPort  shServerSerialPort = shSerialPort();
+
+        // nodeInfo struct of the currently selected target load to be controlled
+        SHnodeInfo  shCurrentLoadNodeInfo;
 
         wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id = -1);
         virtual ~wxSmartHomeServerFrame();
 
+        // Additional SmartHome functions
+        void    SHguageDrawCurrentIntensity(void);
+
     private:
 
-        const char* _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
-        const int   _SH_SERVER_SERIAL_BAUD_RATE = 9600;
-        const int   _SH_SERVER_SERIAL_CHAR_SIZE =  8;
+//        const char* _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
+//        const int   _SH_SERVER_SERIAL_BAUD_RATE = 9600;
+//        const int   _SH_SERVER_SERIAL_CHAR_SIZE =  8;
+
 
         uint8_t     shCurrentIntensity;
-        uint16_t    shThisNodeID = 0;
+//        uint16_t    shThisNodeID = 0;
         uint8_t    *ptrThisNodeID = (uint8_t *)&shThisNodeID;
         uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan
         FILE       *FILEshEventsLog;
-
-
-
-        // nodeInfo struct of the currently selected target load to be controlled
-        SHnodeInfo  shCurrentLoadNodeInfo;
 
 
         //(*Handlers(wxSmartHomeServerFrame)
@@ -91,7 +100,6 @@ class wxSmartHomeServerFrame: public wxFrame
         //*)
 
         // Additional SmartHome functions
-        void      SHguageDrawCurrentIntensity(void);
         void      SHinitServerNodeInfo(void);
         void      SHinitLoadNodeInfo(void);
         uint16_t  SHgetLoadNodeIDfromStorage(uint16_t roomNum, uint8_t loadNum);
@@ -152,7 +160,6 @@ class wxSmartHomeServerFrame: public wxFrame
 //        wxStaticText* shStaticTextLoadName;
         wxTextCtrl* shTextCtrlLoadName;
         wxStaticBitmap* StaticBitmap4;
-        wxGauge* shIntensityGauge;
         wxBitmapButton* shBMPbuttonUP;
         wxStaticBitmap* StaticBitmap2;
         //*)

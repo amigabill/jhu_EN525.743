@@ -19,7 +19,7 @@
 #include <wx/log.h>
 //*)
 
-const wxString SH_CTRL_EVENT_LOG_FILENAME = "/home/smarthome/.wxSmartHome/shEvents.log";
+#include "SmartHomeServerAppDetails.h"
 
 
 IMPLEMENT_APP(wxSmartHomeServerApp);
@@ -32,6 +32,10 @@ END_EVENT_TABLE()
 
 bool wxSmartHomeServerApp::OnInit()
 {
+    _appIsReady = NO;
+
+    _mySHzigbee.start(SH_SERVER_SERIAL_PORT_NAME, SH_SERVER_SERIAL_BAUD_RATE);
+
     //(*AppInitialize
     bool wxsOK = true;
     wxInitAllImageHandlers();
@@ -41,10 +45,11 @@ bool wxSmartHomeServerApp::OnInit()
     	Frame = new wxSmartHomeServerFrame(0);
     	Frame->Show();
     	SetTopWindow(Frame);
-
-//    	shServerSerialPort.start(9600);
     }
     //*)
+
+    // start the serial port with SmartHome system Zigbee settings
+//	_shSerialPortZigbee.start(9600);
 
 
     // for some reason wxLogDebug() causes seg faults
@@ -54,9 +59,11 @@ bool wxSmartHomeServerApp::OnInit()
 //    Frame->shDebugLogFile.Write("Testing debug log output\n");
 
    // update GUI display with current time
-    SHupdateGUItimeText();
+    _SHupdateGUItimeText();
 
 //    wxLogMessage( shCurrentDateTime[11] ) ;
+
+    _appIsReady = YES;
 
     return wxsOK;
 
@@ -69,21 +76,44 @@ bool wxSmartHomeServerApp::OnInit()
 // to check on serial input form Zigbee, refresh the log file etc.
 void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 {
-//    wxLogMessage( "In wxSmartHomeServerApp::OnIdle" ) ;
+    if(_appIsReady == YES)
+    {
+//        wxLogMessage( "In wxSmartHomeServerApp::OnIdle" ) ;
 
-    /* ... */
+        /* ... */
 
-    // check if a new Zigbee frame/SmartHome message has been received an dprocess it
+        // check if a new Zigbee frame/SmartHome message has been received an dprocess it
 
-    // check if a new Zigbee frame/SmartHome message is ready to send out
+        // check if a new Zigbee frame/SmartHome message is ready to send out
 
-    // check if the SmartHome event log file has been updated,
-    // and write new content to LCD display text area
-    SHupdateGUIlogText(SH_CTRL_EVENT_LOG_FILENAME);
+        // check if the SmartHome event log file has been updated,
+        // and write new content to LCD display text area
+        _SHupdateGUIlogText(SH_CTRL_EVENT_LOG_FILENAME);
 
-    // update GUI display with current time
-    SHupdateGUItimeText();
+        // update GUI display with current time
+        _SHupdateGUItimeText();
 
+
+        // check if Zibee message has been received. If is a COMPLETED message then log the SmartHome command event.
+        if(YES == _mySHzigbee.newSHmsgRX)
+        {
+            _logSHcmdEventIfCompleted();
+
+// where to put this, not ONLY in  _doServerNodeIDmsgSM                       _mySHzigbee.newSHmsgRX = NO;
+        }
+
+        // Check in on SmartHome Zigbee messaging state machine for anything to do (ready to transmit or already received)
+        if( (YES == Frame->shCurrentLoadNodeInfo.newSHmsgTX) || (YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX) )
+        {
+            _doServerNodeIDmsgSM();
+        }
+
+        // try to receive SmartHome message data from Serial port
+        if(NO == _mySHzigbee.ZBinFrameRX)
+        {
+            _mySHzigbee.zbRcvAPIframe();
+        }
+    }
 
     // make sure to have another idle event to come into here again
     if( IsMainLoopRunning() )
@@ -93,8 +123,184 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 }
 
 
+// communications state machine, to send/receive Zigbee packets/frames
+void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
+{
+    volatile uint8_t   SHmsgNextState;         // which of 4 message stages are we in now, or 0=idle?
+    volatile uint8_t   SHmsgCmd;
+    volatile uint8_t   SHmsgStatus;
+
+
+    // update to previous iteration's next state
+    Frame->shCurrentLoadNodeInfo.SHmsgCurrentState = Frame->shCurrentLoadNodeInfo.SHmsgNextState;
+
+   switch ( Frame->shCurrentLoadNodeInfo.SHmsgCurrentState )
+    {
+        // Linux Server will receive ALL messages, and log ALL messages. No need to detect errors and specifically tell server of them.
+        //for Linux server logging - use dir name matching node ID with files inside to give room location etc. info
+
+        case SH_MSG_ST_IDLE:
+            // Doing nothing
+            break;
+
+        case SH_MSG_ST_CMD_INIT: // Server TX - send a new SmartHome command message to a load
+            if ( SH_MSG_TYPE_CMD_REQ == Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType )
+            {
+                // Prepare and Send the appropriate SmartHome command message via Zigbee
+                _mySHzigbee.prepareTXmsg(
+                    Frame->shCurrentLoadNodeInfo.SHthisNodeID,              // DestID is the load target that this WC node wants to control
+                    Frame->shThisNodeID,                              // Src ID is this node
+                    SH_MSG_TYPE_CMD_REQ,                       // MsgType
+                    Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand,   // CMD
+                    Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH,   // Status H byte
+                    Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL,   // Status L byte
+                    Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal  // Status value
+                );
+
+                _mySHzigbee.zbXmitAPIframe();      // Transmit the SmartHome message over Zigbee
+                Frame->shCurrentLoadNodeInfo.newSHmsgTX = NO;  // sent it, so make sure we don't send it again
+
+                Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_ACK_REQ;
+//                Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
+//                Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_COMPLETE;
+            }
+            break;
+
+        case SH_MSG_ST_ACK_REQ:  // Server RX - Wait for ACK_REQ from the node we are talking to
+            Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CNFRM;
+            break;
+
+        case SH_MSG_ST_CNFRM:  // Server TX - tell other node if we initiated command request CMD_REQ to it or not
+            Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_COMPLETE;
+            break;
+
+        case SH_MSG_ST_COMPLETE: // Server RX - wait for Load Driver to tell how command execution went
+
+            // if a message from the currently selected Load node ID, then udpate level indicator
+            if( YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX ) //received an appropriate confirmation message
+            {
+                switch( Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand )
+                {
+                    // These commands will redraw the wall control Intensity Level Indicator based on value in statusVal field
+                    case SH_CMD_LOAD_READCRNT:
+                    case SH_CMD_LOAD_GOTOFAV: // implies will be powered, as FAV cannot be full-off level
+//                    case SH_CMD_LOAD_SAVEFAV:
+                        Frame->shCurrentLoadNodeInfo.SHthisNodeLevelFav = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH;
+// wrong?                       Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+// correct? but duped below                        Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+
+                        // NO break here so we also get the Powered and LevelCurrent values below
+
+                    case SH_CMD_LOAD_ON:
+                    case SH_CMD_LOAD_OFF:
+                    case SH_CMD_LOAD_TOGLPWR:
+//                        Frame->shCurrentLoadNodeInfo.SHthisNodeIsPowered = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL;
+// wrong?                       Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+
+                        // NO break here so we also get the Powered and LevelCurrent values below
+
+                    case SH_CMD_LOAD_INC:
+                    case SH_CMD_LOAD_DEC:
+
+                        Frame->shCurrentLoadNodeInfo.SHthisNodeIsPowered = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL;
+                        Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+
+#if 0
+                        if(SH_POWERED_ON == Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL)
+                        {
+                            // lcd draw current intensity level to the status val returned in this message
+                            lcdDrawLvlIndicator(Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal);
+
+                        }
+                        else
+                        {
+                            // NOT currently powered, so lcd draw level indicator as lowest level (OFF), regardless of current intensity level reported by the load
+                            //lcdDrawLvlIndicator(0);
+                            lcdDrawLvlIndicator(LOAD_INTENSITY_FULL_OFF);
+                        }
+#endif // 0
+                        Frame->SHguageDrawCurrentIntensity();
+
+                        break;
+
+                    default:
+                        // do nothing for other command types coming back
+                        break;
+                }
+
+                Frame->shCurrentLoadNodeInfo.newSHmsgRX = NO;
+
+                // reset back to idle state
+                Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
+                Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_IDLE;
+            } // if
+
+            // do the message log elsewhere, outside of this state machine as messages may not come
+            // from the shCurrentNodeInfo's ID, and we want to log completed messages form ALL senders to ALL receivers
+            _mySHzigbee.newSHmsgRX = NO;
+
+            break;
+
+        default:
+            // do nothing for other command types coming back
+            Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;
+            break;
+
+    } // switch
+
+}
+
+
+// If have received a SmartHome message via Zigbee, then check what message it was inthe protocol "conversation".
+// If it is a command completed message, then log this SmartHome command event to text log file and
+// add to the GUI display.
+bool wxSmartHomeServerApp::_logSHcmdEventIfCompleted(void)
+{
+    wxFile shLogFile;
+    wxString shLogFileNewLine;
+
+    shLogFile.Open(SH_CTRL_EVENT_LOG_FILENAME, wxFile::write_append);
+
+    if( !shLogFile.IsOpened() )
+    {
+        // could not open the file for some reason
+        return false;
+    }
+
+
+    wxFileOffset shLogFileLengthCurr = shLogFile.Length();
+    if( shLogFileLengthCurr == wxInvalidOffset )
+    {
+        // file is of some invalid size for some reason
+        return false;
+    }
+
+//_mySHzigbee.
+
+    wxString wxSHcommandStrings[11] = {"NOP", "ON ", "OFF", "INC", "DEC", "FAV", "Save FAV", "Read FAV", "Read Crnt", "Read PWR", "Toggle PWR"};
+
+    // append new message to the text log file
+    shLogFileNewLine = _shCurrentFullDate + "  " + _shCurrentTime + "  "
+                     + wxString::Format("Cntrl %.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHsrcID)
+                     + wxString::Format("Load %.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHdestID)
+                     //+ wxString::Format("%.2x ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHmsgType)
+                     + wxSHcommandStrings[_mySHzigbee.myZBframeRX.ZBfrmPayload.SHcommand] ;
+
+    shLogFile.Write( shLogFileNewLine, shLogFileNewLine.Length() );
+
+    shLogFile.Close();
+
+    // all good at this point
+    return true;
+
+}
+
+
+//wxString wxSmartHomeServerApp::uint16toHexStr(uint16_t )
+
+
 // load the log file and refresh the SmartHome Server GUI with any new log content
-uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
+bool wxSmartHomeServerApp::_SHupdateGUIlogText(const wxString& shLogFileName)
 {
     #define SH_LOG_FILE_MAX_LINE_LENGTH 200
 #if 1
@@ -102,7 +308,7 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
     wxFile shLogFile;
     wxUint8 thisChar[1];
 
-    shLogFile.Open(shLogFileName, wxFile::read);
+    shLogFile.Open(SH_CTRL_EVENT_LOG_FILENAME, wxFile::read);
 
 
 //    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
@@ -167,7 +373,7 @@ uint8_t wxSmartHomeServerApp::SHupdateGUIlogText(const wxString& shLogFileName)
 
 
 // Get the current date and time, and update the Linux Server GUI
-uint8_t wxSmartHomeServerApp::SHupdateGUItimeText(void)
+uint8_t wxSmartHomeServerApp::_SHupdateGUItimeText(void)
 {
 
 //    wxLogMessage( "Entering SHupdateGUIlogText with log filename = %s", shLogFileName ) ;
@@ -208,3 +414,16 @@ uint8_t wxSmartHomeServerApp::SHupdateGUItimeText(void)
 }
 
 
+// Receive Serial port/Zigbee data
+// if the first byte is the Zigbee delimiter, then look for more bytes
+// and verify if it looks like a SmartHome Message frame
+uint8_t wxSmartHomeServerApp::_SHreceiveZBserialData(void)
+{
+//    _shSerialPortZigbee.
+}
+
+uint8_t wxSmartHomeServerApp::_SHsendZBserialData(void)
+{
+
+
+}

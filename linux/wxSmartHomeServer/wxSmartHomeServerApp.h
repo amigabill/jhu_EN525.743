@@ -17,16 +17,14 @@
 
 #include <stdint.h>
 
-
-//#define SH_SERV_APP_NAME "wxSmartHomeServer"
-const wxString SH_SERV_APP_NAME = "wxSmartHomeServer";
-const wxString SH_SERV_APP_PATH_ROOT = "/home/smarthome/.wxSmartHome";
-
-//const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
+#include "SmartHomeServerAppDetails.h"
 
 #include "wxSmartHomeServerMain.h"
 
+#include "SmartHome_Zigbee_Linux.h"
 
+const char* SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
+const int   SH_SERVER_SERIAL_BAUD_RATE = 9600;
 
 
 class wxSmartHomeServerApp : public wxApp
@@ -36,9 +34,10 @@ class wxSmartHomeServerApp : public wxApp
         void OnIdle(wxIdleEvent &event);
 
     private:
+        uint8_t  _appIsReady = NO;
         wxSmartHomeServerFrame* Frame;
-        size_t _shLogFileNumLinesPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
-        size_t _shLogFileLengthPrev = 0; // number of bytes in the SmartHome Control Event log file from the last time we checked
+        size_t   _shLogFileNumLinesPrev = 0; // number of lines in the SmartHome Control Event log file from the last time we checked
+        size_t   _shLogFileLengthPrev = 0;   // number of bytes in the SmartHome Control Event log file from the last time we checked
         wxString _shCurrentDateTime;
         wxString _shCurrentDay;
         wxString _shCurrentMonth;
@@ -48,8 +47,19 @@ class wxSmartHomeServerApp : public wxApp
         wxString _shCurrentDayFullDate;
         wxString _shCurrentTime;
 
-        uint8_t SHupdateGUIlogText(const wxString& shLogFileName);
-        uint8_t SHupdateGUItimeText(void);
+//        SHzigbee mySHzigbee = SHzigbee();
+        SHzigbee _mySHzigbee;
+
+
+        bool _SHupdateGUIlogText(const wxString& shLogFileName);
+        uint8_t _SHupdateGUItimeText(void);
+
+        uint8_t _SHreceiveZBserialData(void);
+        uint8_t _SHsendZBserialData(void);
+
+        void _doServerNodeIDmsgSM(void);
+        bool _logSHcmdEventIfCompleted(void);
+
 
         DECLARE_EVENT_TABLE()
 

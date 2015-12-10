@@ -37,6 +37,10 @@
 		<Linker>
 			<Add option="`wx-config --libs`" />
 		</Linker>
+		<Unit filename="SmartHomeServerAppDetails.h" />
+		<Unit filename="SmartHome_Zigbee_Linux.cpp" />
+		<Unit filename="SmartHome_Zigbee_Linux.h" />
+		<Unit filename="SmartHome_Zigbee_defs.h" />
 		<Unit filename="shLinuxSerialPort.cpp" />
 		<Unit filename="shLinuxSerialPort.h" />
 		<Unit filename="wxSmartHomeServerApp.cpp" />
