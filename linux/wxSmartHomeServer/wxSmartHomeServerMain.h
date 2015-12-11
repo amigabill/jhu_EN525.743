@@ -44,25 +44,23 @@ class wxSmartHomeServerFrame: public wxFrame
 {
     public:
         uint16_t    shThisNodeID = 0;
+//        wxString    SHconfigPath = defaultSHconfigPath;
+        wxString    shPathConfig;
+        wxString    shPathRooms;
 
         wxTextCtrl* shTextCtrlEvtlog;
         wxTextCtrl* shTextCtrlCurrentDate;
         wxTextCtrl* shTextCtrlCurrentTime;
         wxGauge*    shIntensityGauge;
 
-//        SHzigbee mySHzigbee = SHzigbee();
-
         //#define SH_DEBUG_LOG_FILENAME  "/home/billt/shDebugLog.log"
         const wxString SH_DEBUG_LOG_FILENAME  = "/home/billt/shDebugLog.log";
-//        const wxString *PTR_SH_DEBUG_LOG_FILENAME = &SH_DEBUG_LOG_FILENAME;
         wxFile shDebugLogFile;
-
-//        const char* SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
-//        shSerialPort  shServerSerialPort = shSerialPort( SH_SERIAL_ZB_FILENAME );
-//        shSerialPort  shServerSerialPort = shSerialPort();
 
         // nodeInfo struct of the currently selected target load to be controlled
         SHnodeInfo  shCurrentLoadNodeInfo;
+        wxString    shCurrentRoomName;  // Linux App extension to the NodeInfo structs
+        wxString    shCurrentLoadName;  // Linux App extension to the NodeInfo structs
 
         wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id = -1);
         virtual ~wxSmartHomeServerFrame();
@@ -70,15 +68,12 @@ class wxSmartHomeServerFrame: public wxFrame
         // Additional SmartHome functions
         void    SHguageDrawCurrentIntensity(void);
 
+        uint16_t getNumLoadsInRoomFromSorage(uint16_t roomNum);
+
+
     private:
 
-//        const char* _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
-//        const int   _SH_SERVER_SERIAL_BAUD_RATE = 9600;
-//        const int   _SH_SERVER_SERIAL_CHAR_SIZE =  8;
-
-
         uint8_t     shCurrentIntensity;
-//        uint16_t    shThisNodeID = 0;
         uint8_t    *ptrThisNodeID = (uint8_t *)&shThisNodeID;
         uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan
         FILE       *FILEshEventsLog;
@@ -87,7 +82,6 @@ class wxSmartHomeServerFrame: public wxFrame
         //(*Handlers(wxSmartHomeServerFrame)
         void OnQuit(wxCommandEvent& event);
         void OnAbout(wxCommandEvent& event);
-//        void OnIdle(wxIdleEvent &event);
         void OnshBMPbtnRoomRightClick(wxCommandEvent& event);
         void OnshBMPbtnRoomLeftClick(wxCommandEvent& event);
         void OnshBMPbtnLoadRightClick(wxCommandEvent& event);
@@ -102,8 +96,10 @@ class wxSmartHomeServerFrame: public wxFrame
         // Additional SmartHome functions
         void      SHinitServerNodeInfo(void);
         void      SHinitLoadNodeInfo(void);
-        uint16_t  SHgetLoadNodeIDfromStorage(uint16_t roomNum, uint8_t loadNum);
-        uint8_t   SHgetLoadNodeTypefromStorage(uint16_t roomNum, uint8_t loadNum);
+        uint16_t  SHgetLoadNodeIDfromStorage(uint16_t roomNum, uint16_t loadNum);
+        uint8_t   SHgetLoadNodeTypefromStorage(uint16_t roomNum, uint16_t loadNum);
+        wxString  SHgetRoomNamefromStorage(uint16_t roomNum);
+        wxString  SHgetLoadNamefromStorage(uint16_t roomNum, uint16_t loadNum);
 
 
         //(*Identifiers(wxSmartHomeServerFrame)
@@ -144,7 +140,6 @@ class wxSmartHomeServerFrame: public wxFrame
         wxStatusBar* StatusBar1;
         wxBitmapButton* shBMPbuttonON;
         wxCheckBox* shCheckBoxIsHome1;
-//        wxStaticText* shStaticTextRoomName;
         wxTextCtrl* shTextCtrlRoomName;
         wxStaticText* StaticText1;
         wxBitmapButton* shBMPbtnRoomLeft;
@@ -157,7 +152,6 @@ class wxSmartHomeServerFrame: public wxFrame
         wxBitmapButton* shBMPbuttonDWN;
         wxStaticBitmap* StaticBitmap3;
         wxStaticBitmap* StaticBitmap1;
-//        wxStaticText* shStaticTextLoadName;
         wxTextCtrl* shTextCtrlLoadName;
         wxStaticBitmap* StaticBitmap4;
         wxBitmapButton* shBMPbuttonUP;

@@ -6,16 +6,23 @@
  *            running at 9600 8N1
  *            Use async_read into a single-byte buffer to avoid blocking on a serial read which may not happen for a long time.
  *
- *            Based on boost-asio examples at
- *            https://gist.github.com/yoggy/3323808
- *            http://www.webalice.it/fede.tft/serial_port/serial_port.html
- *            http://stackoverflow.com/questions/26267997/boost-asio-async-read-on-serial-port-completes-unexpectedly
+ *            non-blocking tty serial read example at http://www.cmrr.umn.edu/~strupp/serial.html
+ *
+ *            // did not end up using Boost-Asio, but keep examples here for future reference
+ *            //Based on boost-asio examples at
+ *            //https://gist.github.com/yoggy/3323808
+ *            //http://www.webalice.it/fede.tft/serial_port/serial_port.html
+ *            //http://stackoverflow.com/questions/26267997/boost-asio-async-read-on-serial-port-completes-unexpectedly
  *
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-25
  * Copyright: Bill Toner (2015)
  * License:
  **************************************************************/
+
+#include <wx/log.h>
+
+#include "SmartHomeServerAppDetails.h"
 
 #include "shLinuxSerialPort.h"
 
@@ -25,70 +32,53 @@
 #include <unistd.h>
 
 // constructor
-//shSerialPort::shSerialPort(std::string portName, unsigned int baud_rate)
-shSerialPort::shSerialPort(const char* portName)
+shSerialPort::shSerialPort(void)
 {
-//    wxString wxPortName = portName;
-
-    sprintf(_shSerialPortName, "%s", portName);
-    _shSerialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NDELAY);
-    _FILEshSerialPortRX = fopen(portName, "r");
-    _FILEshSerialPortTX = fopen(portName, "w");
-
-//    g_shSerialPortZBwxFile.Open( wxPortName, wxFile::read_write);
-
-//	FILE *input;
-//	FILE *output;
-//	input  = fopen(portName, "r");	  //open the terminal keyboard
-//  output = fopen(portName, "w");
-
-    // set given serial port to baud rate
-//    sprintf( sttyCmd, "stty -F %s %s cs8 cread clocal", portName, baud_rate );
-//    system(sttyCmd);
-
-#if 0
-if(shSerialPortFD == -1) // if open is unsucessful
-	{
-		printf("open_port: Unable to open %s. \n", portName);
-	}
-	else
-	{
-		fcntl(shSerialPortFD, F_SETFL, 0);
-		printf("port %s is open.\n" portName);
-	}
-#endif
 }
 
 
 // destructor
-shSerialPort::~shSerialPort(void)
+shSerialPort::~shSerialPort()
 {
     stop();
 }
 
 
 // start the serial port, of the given port name and given baud rate
-//bool shSerialPort::start(std::string portName, unsigned int baud_rate)
-//bool shSerialPort::start(char* portName, unsigned int baud_rate)
-bool shSerialPort::start(unsigned int baud_rate)
+// TODO - cleanup
+bool shSerialPort::start(const char* portName, unsigned int baud_rate)
 {
     char sttyCmd[100]; // temp string to hold system command to set serial port for use
+    //wxString sttyCmd; // temp string to hold system command to set serial port for use
 
-    //shSerialPortName
-//    sprintf( _shSerialPortName, "%s", portName);
+    sprintf(_shSerialPortName, "%s", portName);
 
-//    _shSerialPortFD = open(_shSerialPortName, O_RDWR | O_NOCTTY | O_NDELAY);
+    shSerialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NDELAY); // | O_NONBLOCK);
 
-    sprintf( sttyCmd, "stty -F %s %d cs8 cread clocal", _shSerialPortName, baud_rate );
-    system(sttyCmd);
-//    system("stty -F /dev/ttyUSB0 9600 cs8 cread clocal");
+    if(shSerialPortFD == -1) // if open is unsucessful
+	{
+        wxLogMessage("open_port: Unable to open %s. \n", portName) ;
+//        wxLogMessage("open_port: Unable to open %s. \n", "/dev/ttyUSB0") ;
+	}
+	else
+	{
+		fcntl(shSerialPortFD, F_SETFL, FNDELAY);  // FNDELAY means non-blocking, return 0 bytes received if buffer empty
+//		fcntl(shSerialPortFD, F_SETFL, 0); // 0 here leaves it in a blocking state, which is not desired in this App
+
+//        wxLogMessage("port %s is open.\n", portName) ;
+	}
+
+    // prepare configuration settings for the serial port
+    sprintf( sttyCmd, "stty -F %s %d raw cs8 cread clocal time 1", _shSerialPortName, baud_rate );
+//    sttyCmd = wxT("stty -F ") + _shSerialPortName + wxT(" ") + wxString::Format(wxT("%d"), baud_rate) + wxT(" raw cs8 cread clocal time 1");
+
+//    wxLogMessage( "sttyCmd = %s", sttyCmd ) ;
+
+    // do a "system" call to set the serial port configuration settings
+//    system( sttyCmd.ToAscii() ); //wxString
+    system( sttyCmd );
 
 //    _shSerialPortZBwxFile.Open(SH_SERIAL_ZB_FILENAME, wxFile::read_write);
-
-    uint8_t zbBufferTX[30] = {0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0xAE };
-    write(_shSerialPortFD, (char *)zbBufferTX, 30);//write to port
-
-//g_shSerialPortZBwxFile.Write(zbBufferTX, 30);
 
     return true;
 }
@@ -98,10 +88,7 @@ bool shSerialPort::start(unsigned int baud_rate)
 void shSerialPort::stop(void)
 {
     // close the serial port
-    close(_shSerialPortFD);
-    fclose(_FILEshSerialPortTX);
-    fclose(_FILEshSerialPortRX);
-
+    close(shSerialPortFD);
 //    _shSerialPortZBwxFile.Close();
 }
 
@@ -110,10 +97,13 @@ void shSerialPort::stop(void)
 // will be used? or use variable?
 bool shSerialPort::rxAvailable(void)
 {
+    // iniital test code implemented, not yet actually used
+
     int bytes_avail = 0;
 //    wxFileOffset bytes_avail = 0;
 
-    ioctl(_shSerialPortFD, FIONREAD, &bytes_avail);
+//    ioctl(_shSerialPortFD, FIONREAD, &bytes_avail);
+    ioctl(shSerialPortFD, FIONREAD, &bytes_avail);
 
 //    bytes_avail = _shSerialPortZBwxFile.Length();
     return( bytes_avail > 0 );
@@ -123,13 +113,24 @@ bool shSerialPort::rxAvailable(void)
 // receive a single byte form serial port
 // serial port should already be open and configured as a file descriptor style access
 // from one of /dev/tty* devices
-uint8_t rxReceive(void)
+// this should be NON-blocking in case there are no Zigbee messages coming in for a long time.
+uint16_t shSerialPort::rxReceive(void)
 {
-    uint8_t charRX[1];
+    // iniital test code implemented, not yet actually used
 
-//    _shSerialPortZBwxFile.Read(charRX, (size_t)1);
+    uint16_t  numBytes_dataByte = 0; // 16bit thing to hold the number of bytes received (0 or 1) and data byte to send back
+    uint16_t  *ptr_numBytes_dataByte = &numBytes_dataByte;
+    int       bytes_read = 0;
+    uint8_t   charRX[1];
 
-    return( charRX[0] );
+//    _shSerialPortZBwxFile.Read(charRX, (size_t)1); // if tty is wxFile
+    bytes_read= read(shSerialPortFD, charRX, (size_t)1);
+
+    ptr_numBytes_dataByte[1] = bytes_read;
+    ptr_numBytes_dataByte[0] = charRX[0];
+
+//    return( charRX[0] );
+    return( numBytes_dataByte );
 }
 
 
@@ -139,7 +140,14 @@ uint8_t rxReceive(void)
 uint8_t shSerialPort::txSend(uint8_t charTX)
 {
     //write(_shSerialPortFD, &charTX, 1);//write to port
+
+    // iniital test code implemented, not yet actually used
+
     uint8_t zbBufferTX[30] = {0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFE, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0xAE };
-    write(_shSerialPortFD, (char *)zbBufferTX, 30);//write to port
+//    write(_shSerialPortFD, (char *)zbBufferTX, 30);//write to port
+    write(shSerialPortFD, (char *)zbBufferTX, 30);//write to port
 //    _shSerialPortZBwxFile.Write(zbBufferTX, 30);
+
+    return(true);
 }
+

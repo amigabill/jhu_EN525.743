@@ -20,6 +20,8 @@ class SHzigbee
         volatile SHpayload  SHmsgRX;            // SmartHome message received
         volatile SHpayload  SHmsgTX;            // SmartHome message to send
 
+        uint8_t  SHcmdEventNeedsLogged; // has a command completed message been received to add to log file YES/NO
+
 //        const char* SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
 //        shSerialPort  shSerialPortZigbee = shSerialPort(SH_SERVER_SERIAL_PORT_NAME);
         shSerialPort  shSerialPortZigbee; // = shSerialPort();

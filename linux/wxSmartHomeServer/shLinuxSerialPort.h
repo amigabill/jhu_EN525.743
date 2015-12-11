@@ -26,13 +26,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+
+
+#include "SmartHomeServerAppDetails.h"
+
+#include "SmartHome_Zigbee_defs.h"
+
+// Boost-Asio library was experimental early on, and not yet fully implemented here.
+// Kept around for future reference/attempt
+//#define SERVER_USING_BOOST_ASIO_SERIALPORT
+#ifdef SERVER_USING_BOOST_ASIO_SERIALPORT
 // Boost Asio library for communications things, such as serial port for Zigbee
 //#include <boost/asio.hpp>
-
-
-#include "SmartHome_Zigbee.h"
-
-#if 0
 //#define SH_SERVER_SERIAL_PORT_NAME  (std::string)"/dev/ttyUSB0"
 #define SH_SERVER_SERIAL_PORT_NAME  "/dev/ttyUSB0"
 //const char* SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
@@ -43,38 +48,30 @@
 #define SH_SERVER_SERIAL_FLOW_CTRL  boost::asio::serial_port_base::flow_control::none
 #endif
 
-//const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
-//wxFile g_shSerialPortZBwxFile;
-
 class shSerialPort
 {
     public:
         uint8_t ZBfrmReadyTX = 0; // a Zigbee frame is ready to transmit
         uint8_t ZBfrmReadyRX = 0; // a Zigbee frame has been received
 
+        int shSerialPortFD = 0;
 
         // constructor
-//        shSerialPort(void);
-//        shSerialPort::shSerialPort(std::string portName, unsigned int baud_rate);
-//        shSerialPort::shSerialPort(char* portName, unsigned int baud_rate);
-        shSerialPort(const char* portName);
+         shSerialPort(void);
 
         // destructor
-        ~shSerialPort(void);
+        ~shSerialPort();
 
-        // start the serial port, of the given port name and given baud rate
-//        bool start(std::string portName, unsigned int baud_rate);
-//        bool start(char* portName, unsigned int baud_rate);
-        bool start(unsigned int baud_rate);
+        bool start(const char* portName, unsigned int baud_rate);
 
         // stop the serial port and close it out
         void stop(void);
 
-//        // say if rxBuffer contains a new Zigbee frame/SmartHome message
+        // say if rxBuffer contains a new Zigbee frame/SmartHome message
         bool rxAvailable(void);
 
-//        // read a byte
-        uint8_t rxReceive(void);
+        // read a byte
+        uint16_t rxReceive(void);
 
         // transmit the content of
         uint8_t txSend(uint8_t charTX);
@@ -85,13 +82,14 @@ class shSerialPort
 //        boost::asio::serial_port _shSerial;
 //        std::string  shSerialPortName[20];
 
-//        const wxString SH_SERIAL_ZB_FILENAME  = "/dev/ttyUSB0";
-//        wxFile _shSerialPortZBwxFile();
 
-        char         _shSerialPortName[20];
-        FILE         *_FILEshSerialPortRX;
-        FILE         *_FILEshSerialPortTX;
-        int          _shSerialPortFD;
+        char         _shSerialPortName[40];
+//        wxString         _shSerialPortName;
+
+//        wxFile _shSerialPortZBwxFile();
+//        int          _shSerialPortFD;
+//        wxFile       _shSerialPortwxFile();
+
         uint8_t      _txBuffer[ZB_TX_FRM_BYTES];  // buffer to hold Zigbee frame/SmartHome message to send
         uint8_t      _rxBuffer[ZB_RX_FRM_BYTES];  // buffer to receive a Zigbee frame/Smarthome message into
 

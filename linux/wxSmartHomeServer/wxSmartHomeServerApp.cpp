@@ -65,6 +65,9 @@ bool wxSmartHomeServerApp::OnInit()
 
     _appIsReady = YES;
 
+    // make sure not to log any phantom events before we are running and receive real events
+    _mySHzigbee.SHcmdEventNeedsLogged = NO;
+
     return wxsOK;
 
 }
@@ -95,7 +98,8 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 
 
         // check if Zibee message has been received. If is a COMPLETED message then log the SmartHome command event.
-        if(YES == _mySHzigbee.newSHmsgRX)
+//        if(YES == _mySHzigbee.newSHmsgRX)
+        if(YES == _mySHzigbee.SHcmdEventNeedsLogged)
         {
             _logSHcmdEventIfCompleted();
 
@@ -251,9 +255,9 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
 }
 
 
-// If have received a SmartHome message via Zigbee, then check what message it was inthe protocol "conversation".
+// If have received a SmartHome message via Zigbee, then check what message it was in the protocol "conversation".
 // If it is a command completed message, then log this SmartHome command event to text log file and
-// add to the GUI display.
+// add to the GUI display. Server logs ALL completed messages, regardless of control/load IDs involved
 bool wxSmartHomeServerApp::_logSHcmdEventIfCompleted(void)
 {
     wxFile shLogFile;
@@ -275,20 +279,23 @@ bool wxSmartHomeServerApp::_logSHcmdEventIfCompleted(void)
         return false;
     }
 
-//_mySHzigbee.
-
-    wxString wxSHcommandStrings[11] = {"NOP", "ON ", "OFF", "INC", "DEC", "FAV", "Save FAV", "Read FAV", "Read Crnt", "Read PWR", "Toggle PWR"};
-
     // append new message to the text log file
-    shLogFileNewLine = _shCurrentFullDate + "  " + _shCurrentTime + "  "
-                     + wxString::Format("Cntrl %.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHsrcID)
-                     + wxString::Format("Load %.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHdestID)
+    shLogFileNewLine = _shCurrentFullDate + "  " + _shCurrentTime + "    "
+                     + wxString::Format("Control=%.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHsrcID)
+                     + wxString::Format("Load=%.2x    ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHdestID)
                      //+ wxString::Format("%.2x ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHmsgType)
-                     + wxSHcommandStrings[_mySHzigbee.myZBframeRX.ZBfrmPayload.SHcommand] ;
+                     + "\n        "
+                     + wxSHcommandStrings[_mySHzigbee.myZBframeRX.ZBfrmPayload.SHcommand]
+                     + "    Powered=" + wxString::Format("%d", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHstatusL)
+                     + "  Level/Status=" + wxString::Format("%d", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHstatusVal)
+                     + "\n\n";
 
     shLogFile.Write( shLogFileNewLine, shLogFileNewLine.Length() );
 
     shLogFile.Close();
+
+    // clear flag so we don't repeat this new log event
+    _mySHzigbee.SHcmdEventNeedsLogged = NO;
 
     // all good at this point
     return true;
@@ -296,14 +303,11 @@ bool wxSmartHomeServerApp::_logSHcmdEventIfCompleted(void)
 }
 
 
-//wxString wxSmartHomeServerApp::uint16toHexStr(uint16_t )
-
-
 // load the log file and refresh the SmartHome Server GUI with any new log content
 bool wxSmartHomeServerApp::_SHupdateGUIlogText(const wxString& shLogFileName)
 {
     #define SH_LOG_FILE_MAX_LINE_LENGTH 200
-#if 1
+
     size_t i=0, shLogFileNumLinesCurr=0;
     wxFile shLogFile;
     wxUint8 thisChar[1];
@@ -366,7 +370,7 @@ bool wxSmartHomeServerApp::_SHupdateGUIlogText(const wxString& shLogFileName)
     _shLogFileLengthPrev = shLogFileLengthCurr;
 
     shLogFile.Close();
-#endif // 0
+
     // all good at this point
     return true;
 }

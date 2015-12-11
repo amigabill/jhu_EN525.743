@@ -1,14 +1,15 @@
 #ifndef DEF_SH_NODE_INFO_H
 #define DEF_SH_NODE_INFO_H
 // SmartHome node Status Values
-#define SH_STATUS_SUCCESS       (uint8_t)0x00
-#define SH_STATUS_FAILED        (uint8_t)0x01
-#define SH_STATUS_CONFIRMED     (uint8_t)0x02
-#define SH_STATUS_NOT_CONFIRMED (uint8_t)0x03
+#define SH_STATUS_SUCCESS       (uint8_t)0x00 // will likely often use a current intensity level value instead of this
+#define SH_STATUS_CONFIRMED     (uint8_t)0xfd // was 0x02
+#define SH_STATUS_NOT_CONFIRMED (uint8_t)0xfe // was 0x03
+#define SH_STATUS_FAILED        (uint8_t)0xff // was 0x01
 
-#define NODEINFO_NODETYPE_CNTRL (uint8_t)0x00
-#define NODEINFO_NODETYPE_LIGHT (uint8_t)0x01
-#define NODEINFO_NDOETYPE_FAN   (uint8_t)0x02
+#define NODEINFO_NODETYPE_CNTRL  (uint8_t)0x00
+#define NODEINFO_NODETYPE_LIGHT  (uint8_t)0x01
+#define NODEINFO_NODETYPE_FAN    (uint8_t)0x02
+#define NODEINFO_NODETYPE_SERVER (uint8_t)0x03
 
 #define SH_NODE_NUM_FOR_CNTRLR  1                  // For a wall switch "controller"
 //#define SH_NODE_NUM_IDS  SH_NODE_NUM_FOR_CNTRLR  // For a wall switch "controller"

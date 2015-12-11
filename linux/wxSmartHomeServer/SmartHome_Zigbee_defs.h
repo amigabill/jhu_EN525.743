@@ -70,7 +70,7 @@ typedef struct
 // such as if wall control received an on/off/intensity command
 
 
-// SmartHome node Commands
+// SmartHome node Commands - these would really be more at home in the SmartHome_NodeInfo.hfile
 #define SH_CMD_NOP               (uint8_t)0x00 // No OPeration, do nothing
 #define SH_CMD_LOAD_ON           (uint8_t)0x01 // Turn on the target load at this node
 #define SH_CMD_LOAD_OFF          (uint8_t)0x02 // Turn off the target load at this node
@@ -84,6 +84,16 @@ typedef struct
 #define SH_CMD_LOAD_READPWR      (uint8_t)0x09 // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
 #define SH_CMD_LOAD_TOGLPWR      (uint8_t)0x0a // read the current "Powered" state  at target load (ON/OFF, regardless of current intensity value)
 //#define SH_CMD_LOAD_EVNT_NOTICE  (uint8_t)0xff // tell server about an event, deprecated
+
+#ifdef LINUX_SERVER_APP
+// can't put these here, but I wish I could. Doing so gives a circular dependency item already defined error from compiler
+// "first defined here" error message, which can be confusing and difficult to track down
+// adding "const" in front of wxString seems to have helped
+#include <wx/string.h>
+//const wxString wxSHcommandStrings[11] = {"NOP", "ON ", "OFF", "INC", "DEC", "FAV", "Save FAV", "Read FAV", "Read Crnt", "Read PWR", "Toggle PWR"};
+const wxString wxSHcommandStrings[11] = {"No Operation", "ON ", "OFF", "Increase Level", "Decrease Level", "Goto Favorite level", "Save Current as Favorite", "Read Favorite Level", "Read Current Level", "Read Powered", "Toggle Powered"};
+#endif // LINUX_SERVER_APP
+
 
 #define SH_POWERED_OFF (uint8_t)0x00
 #define SH_POWERED_ON  (uint8_t)0x01
@@ -129,8 +139,8 @@ typedef struct
     volatile uint16_t SHsrcID;      // 16bit Smarthome node ID (inside payload so that it can be encrypted)
     volatile uint8_t  SHmsgType;    // 8bit Smarthome message type
     volatile uint8_t  SHcommand;    // 8bit Smarthome command
-    volatile uint8_t  SHstatusH;    // Status value 2 / High Byte of 16bit Smarthome
-    volatile uint8_t  SHstatusL;    // Status value 1 / Low Byte of 16bit Smarthome
+    volatile uint8_t  SHstatusH;    // Status value 2 / High Byte of 16bit Smarthome // used for FAVorite level value
+    volatile uint8_t  SHstatusL;    // Status value 1 / Low Byte of 16bit Smarthome // used for isPowered YES/NO value
     volatile uint8_t  SHstatusVal;  // 8bit Smarthome message type
     volatile uint8_t  SHreserved1;  // 8bit Smarthome message type
     volatile uint8_t  SHreserved2;  // 8bit Smarthome message type

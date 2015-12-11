@@ -112,9 +112,6 @@ BEGIN_EVENT_TABLE(wxSmartHomeServerFrame,wxFrame)
     EVT_BUTTON(ID_BITMAPBUTTON_SH_DWN, wxSmartHomeServerFrame::OnshBMPbtnDecIntClick)
     EVT_BUTTON(ID_BITMAPBUTTON_SH_ON, wxSmartHomeServerFrame::OnshBMPbtnOnClick)
     EVT_BUTTON(ID_BITMAPBUTTON_SH_OFF, wxSmartHomeServerFrame::OnshBMPbtnOffClick)
-
-    // SmartHome log text file events to GUI text area
-
 END_EVENT_TABLE()
 
 wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
@@ -126,6 +123,9 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     wxBoxSizer* BoxSizer1;
     wxMenuBar* MenuBar1;
     wxMenu* Menu2;
+
+    // TODO - change paths to BMP image files to inside of /home/smarthome/.wxSmartHome/IMAGES/
+    //        OR some tool install path, I have not yet worked out a tool installation dir tree
 
     Create(parent, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE, _T("wxID_ANY"));
     BoxSizer1 = new wxBoxSizer(wxHORIZONTAL);
@@ -170,18 +170,20 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     shTextCtrlCurrentDate->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
 
 
-    shTextCtrlRoomName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_ROOMNAME, _("Room Name"), wxPoint(80,320), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_ROOMNAME"));
-    shTextCtrlRoomName->SetMinSize(wxSize(100,20));
+    shTextCtrlRoomName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_ROOMNAME, _("Room Name"), wxPoint(80,325), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_ROOMNAME"));
+    shTextCtrlRoomName->SetMinSize(wxSize(150,20));
     shTextCtrlRoomName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
     shTextCtrlRoomName->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
-    shTextCtrlLoadName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_LOADNAME, _("Load Name"), wxPoint(88,408), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_LOADNAME"));
-    shTextCtrlLoadName->SetMinSize(wxSize(100,20));
+    shTextCtrlLoadName = new wxTextCtrl(shPanel1, ID_TEXTCTRL_SH_LOADNAME, _("Load Name"), wxPoint(80,410), wxDefaultSize, wxTE_READONLY|wxTE_CENTRE|wxNO_BORDER, wxDefaultValidator, _T("ID_TEXTCTRL_SH_LOADNAME"));
+    shTextCtrlLoadName->SetMinSize(wxSize(150,20));
     shTextCtrlLoadName->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
     shTextCtrlLoadName->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));
 
 
     BoxSizer1->Add(shPanel1, 1, wxALL|wxEXPAND|wxFIXED_MINSIZE|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     SetSizer(BoxSizer1);
+
+#if 0 // wxSmith gave me menubar and status bar for this App's window, but I don't want them, so comment out
     MenuBar1 = new wxMenuBar();
     Menu1 = new wxMenu();
     MenuItem1 = new wxMenuItem(Menu1, idMenuQuit, _("Quit\tAlt-F4"), _("Quit the application"), wxITEM_NORMAL);
@@ -198,22 +200,37 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     StatusBar1->SetFieldsCount(1,__wxStatusBarWidths_1);
     StatusBar1->SetStatusStyles(1,__wxStatusBarStyles_1);
     SetStatusBar(StatusBar1);
+#endif
     BoxSizer1->Fit(this);
     BoxSizer1->SetSizeHints(this);
 
-//    Connect(ID_BITMAPBUTTON_SH_RM_RT,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick);
-//    Connect(idMenuQuit,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnQuit)////;
-//    Connect(idMenuAbout,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnAbout);
+    // wxSmith gave me menubar and status bar for this App's window, but I don't want them, so comment out
+    //Connect(ID_BITMAPBUTTON_SH_RM_RT,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick);
+    //Connect(idMenuQuit,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnQuit)////;
+    //Connect(idMenuAbout,wxEVT_COMMAND_MENU_SELECTED,(wxObjectEventFunction)&wxSmartHomeServerFrame::OnAbout);
+
     //*)
 
     shDebugLogFile.Open( SH_DEBUG_LOG_FILENAME, wxFile::write);
     shDebugLogFile.Write("Testing debug log output\n");
 
+    // set file paths to data files to be used during runtime
+  	shPathConfig = SH_SERV_PATH_CFG_DEFAULT;
+  	shPathRooms  = SH_SERV_PATH_ROOMS_DEFAULT;
+
     // initialize the Server Node Info struct data
     SHinitServerNodeInfo();
+//    wxLogMessage( "Server Node ID = 0x%.4x ; Server Node Type = %d", shThisNodeID, shThisNodeType ) ;
+
 
     // initialize default load Node Info struct data
     SHinitLoadNodeInfo();
+
+    // update the GUI display with Room and Load names on their button areas
+    shTextCtrlRoomName->Clear();
+    shTextCtrlRoomName->AppendText(shCurrentRoomName);
+    shTextCtrlLoadName->Clear();
+    shTextCtrlLoadName->AppendText(shCurrentLoadName);
 
     // start the serial port with SmartHome system Zigbee settings
 //    shServerSerialPort.start(9600);
@@ -269,32 +286,24 @@ void wxSmartHomeServerFrame::OnAbout(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('R');
 
     wxLogMessage( "Button Room Right" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('L');
 
     wxLogMessage( "Button Room Left" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('r');
 
     wxLogMessage( "Button Load Right" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('l');
 
     wxLogMessage( "Button Load Left" ) ;
 }
@@ -302,11 +311,6 @@ void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('I');
-
-    wxLogMessage( "Button Up Inc Intensity" ) ;
-
     if(shCurrentLoadNodeInfo.SHthisNodeIsPowered == NO)
     {
         shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = LOAD_INTENSITY_FULL_OFF + 1;
@@ -336,15 +340,11 @@ void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
     // update the local level/intensity guage on LCD
     SHguageDrawCurrentIntensity();
 
+//    wxLogMessage( "Button Up Inc Intensity" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('F');
-
-    wxLogMessage( "Button FAVorite Intensity = %d", shCurrentLoadNodeInfo.SHthisNodeLevelFav ) ;
-
     shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = shCurrentLoadNodeInfo.SHthisNodeLevelFav;
 
     if(shCurrentLoadNodeInfo.SHthisNodeIsPowered == NO)
@@ -357,16 +357,13 @@ void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 
     // update the local level/intensity guage on LCD
     SHguageDrawCurrentIntensity();
+
+//    wxLogMessage( "Button FAVorite Intensity = %d", shCurrentLoadNodeInfo.SHthisNodeLevelFav ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 {
-    // test for debugging to see if serial is alive
- //   shServerSerialPort.txSend('D');
-
-    wxLogMessage( "Button Down Dec Intensity" ) ;
-
-//TODO - do not mak ecurrInt = OFF, leave it one step above, so ON button has someplace to go that isn't still OFF level
+    //TODO - do not make currInt = OFF, leave it one step above, so ON button has someplace to go that isn't still OFF level
 
     if(shCurrentLoadNodeInfo.SHthisNodeLevelCurrent <= LOAD_INTENSITY_MIN)
     {
@@ -385,16 +382,16 @@ void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
 
     // send new level and powered state to the load via Zigbee
 
-
     // update the local level/intensity guage on LCD
     SHguageDrawCurrentIntensity();
+
+//    wxLogMessage( "Button Down Dec Intensity" ) ;
 }
 
 
 // Have an ON button event
 void wxSmartHomeServerFrame::OnshBMPbtnOnClick(wxCommandEvent& event)
 {
-//    wxLogMessage( "Button On" ) ;
     if(  NO == shCurrentLoadNodeInfo.SHthisNodeIsPowered )
     {
         // don't turn on to an OFF intensity level, turn on to first level above OFF
@@ -462,7 +459,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnOffClick(wxCommandEvent& event)
         // update the local level/intensity guage on LCD
         SHguageDrawCurrentIntensity();
 
-        wxLogMessage( "Button Off" ) ;
+//        wxLogMessage( "Button Off" ) ;
     }
 }
 
@@ -512,59 +509,54 @@ void wxSmartHomeServerFrame::SHguageDrawCurrentIntensity(void)
 }
 
 
-#if 1
 // Initialize the currentNodeInfo struct based on data in the default load for this server from file
 // DEBUG seg fault from this function call when using file access, changed to hardcoded values works
 //       and hardcode is OK in cae of server due to specially assigned node ID value and type value
 // change to wxFile type file access instead, if time allows
 void wxSmartHomeServerFrame::SHinitServerNodeInfo(void)
 {
-    // files to read data from
-//    ifstream FILEserverNodeID;
-    FILE  *FILEserverNodeID;
+     uint16_t    tmpNodeID = 0;
+     uint8_t    *ptrTmpNodeID = (uint8_t *)&tmpNodeID;
 
-//    shDebugLogFile.Write("In SHinitServerNodeInfo()\n");
+    // file to read data from
+    FILE  *FILEserverNodeInfo;
+    wxString fileNameLoadData = shPathConfig + "SERVER.BIN";
 
+    FILEserverNodeInfo = fopen(fileNameLoadData.fn_str(), FILE_READ );
+
+    // read the node ID value
+    ptrTmpNodeID[1] = (uint8_t)fgetc(FILEserverNodeInfo);  // 1st byte
+    ptrTmpNodeID[0] = (uint8_t)fgetc(FILEserverNodeInfo);  // 2nd byte
+    shThisNodeType  = (uint8_t)fgetc(FILEserverNodeInfo);  // 3rd byte
 #if 0
-    #define FILENAME_SERVER_NODEINFO  "/home/smarthome/.wxSmartHome/SERVER.BIN"
-//    FILEserverNodeID.open(FILENAME_SERVER_NODEINFO, (ios::in | ios::binary) );
-    FILEserverNodeID = fopen(FILENAME_SERVER_NODEINFO, FILE_READ);
-
-    ptrThisNodeID[1] = (uint8_t)fgetc(FILEserverNodeID);  // 1st byte
-    ptrThisNodeID[0] = (uint8_t)fgetc(FILEserverNodeID);  // 2nd byte
-
-    shThisNodeType = (uint8_t)fgetc(FILEserverNodeID);  // 3rd byte
-
-//    FILEserverNodeID.close();
-    fclose(FILEserverNodeID);
-#endif // 0
-
     ptrThisNodeID[1] = (uint8_t)0x00;  // server node ID is special value of 0
     ptrThisNodeID[0] = (uint8_t)0x00;
-    shThisNodeType = SH_NODE_TYPE_SERVER;
+    shThisNodeType = NODEINFO_NODETYPE_SERVER; //SH_NODE_TYPE_SERVER;
+#endif
+
+    // close out the file as we're done for now
+    fclose(FILEserverNodeInfo);
 }
 
 
 // read node ID from NodeInfo struct based on data from file
 // for the given room number and load number
-uint16_t wxSmartHomeServerFrame::SHgetLoadNodeIDfromStorage(uint16_t roomNum, uint8_t loadNum)
+uint16_t wxSmartHomeServerFrame::SHgetLoadNodeIDfromStorage(uint16_t roomNum, uint16_t loadNum)
 {
      uint16_t    tmpNodeID = 0;
      uint8_t    *ptrTmpNodeID = (uint8_t *)&tmpNodeID;
 
-    // files to read data from
-//    ifstream FILEloadNodeInfo;
+    // file to read data from
     FILE  *FILEloadNodeInfo;
-    char   fileNameLoadData[45];
+    wxString fileNameLoadData = shPathRooms + wxString::Format("%d", roomNum) + "/" + wxString::Format("%d", loadNum) + ".BIN";
 
-    sprintf(fileNameLoadData, "/home/smarthome/.wxSmartHome/%d/%d.BIN", roomNum, loadNum);
-//    FILEloadNodeInfo.open(fileNameLoadData, (ios::in | ios::binary) );
-    FILEloadNodeInfo = fopen(fileNameLoadData, FILE_READ );
+    FILEloadNodeInfo = fopen(fileNameLoadData.fn_str(), FILE_READ );
 
+    // read the node ID value
     ptrTmpNodeID[1] = (uint8_t)fgetc(FILEloadNodeInfo);  // 1st byte
     ptrTmpNodeID[0] = (uint8_t)fgetc(FILEloadNodeInfo);  // 2nd byte
 
-//    FILEloadNodeInfo.close();
+    // close out the file as we're done for now
     fclose(FILEloadNodeInfo);
 
     return(tmpNodeID);
@@ -573,31 +565,28 @@ uint16_t wxSmartHomeServerFrame::SHgetLoadNodeIDfromStorage(uint16_t roomNum, ui
 
 // read node type from NodeInfo struct based on data from file
 // for the given room number and load number
-uint8_t wxSmartHomeServerFrame::SHgetLoadNodeTypefromStorage(uint16_t roomNum, uint8_t loadNum)
+uint8_t wxSmartHomeServerFrame::SHgetLoadNodeTypefromStorage(uint16_t roomNum, uint16_t loadNum)
 {
      uint8_t     tmpNodeType = 0;
 
     // files to read data from
-//    ifstream FILEloadNodeInfo;
     FILE  *FILEloadNodeInfo;
-    char   fileNameLoadData[45];
+    wxString fileNameLoadData = shPathRooms + wxString::Format("%d", roomNum) + "/" + wxString::Format("%d", loadNum) + ".BIN";
 
-    sprintf(fileNameLoadData, "/home/smarthome/.wxSmartHome/%d/%d.BIN", roomNum, loadNum);
-//    FILEloadNodeInfo.open(fileNameLoadData, (ios::in | ios::binary) );
-    FILEloadNodeInfo = fopen(fileNameLoadData, FILE_READ );
+    FILEloadNodeInfo = fopen(fileNameLoadData.fn_str(), FILE_READ );
 
+    // skip over other data fields
     (uint8_t)fgetc(FILEloadNodeInfo);  // 1st byte
     (uint8_t)fgetc(FILEloadNodeInfo);  // 2nd byte
 
+    // read the node type
     tmpNodeType = (uint8_t)fgetc(FILEloadNodeInfo);  // 3rd byte
 
-//    FILEloadNodeInfo.close();
+    // close out the file as we're done for now
     fclose(FILEloadNodeInfo);
 
     return(tmpNodeType);
 }
-
-#endif // 0
 
 
 void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
@@ -612,6 +601,9 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
 
     shCurrentLoadNodeInfo.SHthisNodeID    = SHgetLoadNodeIDfromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
     shCurrentLoadNodeInfo.SHthisNodeType  = SHgetLoadNodeTypefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
+    shCurrentRoomName                     = SHgetRoomNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
+    shCurrentLoadName                     = SHgetLoadNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
+
     // TODO get load name from storage text file and display to GUI
     // _shCurrentLoadName = SHgetLoadNameFromStorage(DEFAULT_LOAD_NUM);
     //shTextCtrlLoadName->Clear();
@@ -646,7 +638,82 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
     shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 4; //0;
     shCurrentLoadNodeInfo.SHthisNodeLevelFav = 2;
 
-    wxLogMessage( "Default Load ID = 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
+//    wxLogMessage( "Default Load ID = 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 
 }
 
+
+// Look on SD card for number of loads in the given room.
+// Each room on SD card is a directory with same name as its room number.
+// Each load on SD is a few files with names of load number DOT extension, such as 0.BIN or 1.BIN etc.
+// Cycle through the numbers, starting with first load number of 0 and counting up,
+// until an N.BIN file is not found for that eval load number N.
+uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromSorage(uint16_t roomNum)
+{
+    uint16_t tmpLoadNum = 0, lastLoadNumInRoom = 0;
+    wxString loadNumFileName = "/65535/255.BIN";  // default longest filename to make sure have enough chars in string
+
+    loadNumFileName = shPathRooms + wxString::Format("%d", roomNum);
+    if( ! wxFile::Exists(loadNumFileName) )
+    {
+        return(ROOM_NO_LOADS);
+    }
+
+
+    // Get last load number for the default room
+    tmpLoadNum = 0;
+    do
+    {
+        lastLoadNumInRoom = tmpLoadNum;
+        tmpLoadNum += 1;
+        loadNumFileName = shPathRooms + wxString::Format("%d", roomNum)
+                        + "/" + wxString::Format("%d", lastLoadNumInRoom) + ".BIN" ;
+    } while( (tmpLoadNum <= 65536) && wxFile::Exists(loadNumFileName)  );
+
+    // first is number 0, so add 1 to the last number detected for how many there are
+    return(lastLoadNumInRoom+1);
+}
+
+
+// read the name of the selected load from a text file
+// This file should be a one-line text file,
+// and the line should be short enough to fit into the name label of the GUI load buttons area
+wxString  wxSmartHomeServerFrame::SHgetLoadNamefromStorage(uint16_t roomNum, uint16_t loadNum)
+{
+    wxString tmpLoadName;
+
+    // files to read data from
+    wxString fileNameLoadData = shPathRooms + wxString::Format("%d", roomNum) + "/" + wxString::Format("%d", loadNum) + ".TXT";
+    wxFile loadNameFile(fileNameLoadData, wxFile::read);
+
+    // read the full single-line file content, which should be relatively small
+    loadNameFile.ReadAll( &tmpLoadName );
+//    wxLogMessage( "read load name from file = %s ; %s", fileNameLoadData, tmpRoomName ) ;
+
+    // close out the file as we're done for now
+    loadNameFile.Close();
+
+    return(tmpLoadName);
+}
+
+
+// read the name of the selected room from a text file
+// This file should be a one-line text file,
+// and the line should be short enough to fit into the name label of the GUI load buttons area
+wxString  wxSmartHomeServerFrame::SHgetRoomNamefromStorage(uint16_t roomNum)
+{
+    wxString tmpRoomName;
+
+    // files to read data from
+    wxString fileNameRoomData = shPathRooms + wxString::Format("%d", roomNum) + "/R.TXT";
+    wxFile roomNameFile(fileNameRoomData, wxFile::read);
+
+    // read the full single-line file content, which should be relatively small
+    roomNameFile.ReadAll( &tmpRoomName );
+//    wxLogMessage( "read room name from file = %s ; %s", fileNameRoomData, tmpRoomName ) ;
+
+    // close out the file as we're done for now
+    roomNameFile.Close();
+
+    return(tmpRoomName);
+}

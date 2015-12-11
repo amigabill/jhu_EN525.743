@@ -11,9 +11,11 @@
 
 #define LINUX
 
-//#define SH_SERV_APP_NAME "wxSmartHomeServer"
-const wxString SH_SERV_APP_NAME      = "wxSmartHomeServer";
-const wxString SH_SERV_APP_PATH_ROOT = "/home/smarthome/.wxSmartHome";
+const wxString SH_SERV_APP_NAME            = "wxSmartHomeServer";
+const wxString SH_SERV_APP_PATH_ROOT       = "/home/smarthome/.wxSmartHome/";
+//const wxString defaultSHpathConfig         = "/home/smarthome/.wxSmartHome/CONFIG/";
+const wxString SH_SERV_PATH_CFG_DEFAULT    = SH_SERV_APP_PATH_ROOT+ "CONFIG/";
+const wxString SH_SERV_PATH_ROOMS_DEFAULT  = SH_SERV_PATH_CFG_DEFAULT + "ROOMS/";
 
 const wxString SH_CTRL_EVENT_LOG_FILENAME = "/home/smarthome/.wxSmartHome/shEvents.log";
 

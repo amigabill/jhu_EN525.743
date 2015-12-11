@@ -7,7 +7,7 @@
 // Normal runtime function should not be different to the outside observer.
 // Hopefully I can figure out how to share the same file between them at some point.
 
-#define SERIALPORT_LINUX
+// define on compiler commandline instead - #define SERIALPORT_LINUX
 
 //#define DEBUG_ZB_RECEIVE
 
@@ -20,14 +20,6 @@
 #include "SmartHome_Zigbee_Linux.h"
 #include "shLinuxSerialPort.h"
 
-//        const char* _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
-//        //const wxString _SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
-//        const int   _SH_SERVER_SERIAL_BAUD_RATE = 9600;
-//        const int   _SH_SERVER_SERIAL_CHAR_SIZE =  8;
-
-//        shSerialPort  _shSerialPortZigbee(_SH_SERVER_SERIAL_PORT_NAME);
-//        shSerialPort  _shSerialPortZigbee = shSerialPort(_SH_SERVER_SERIAL_PORT_NAME);
-        shSerialPort  _shSerialPortZigbee;
 
 // Comment out the following defines to save Arduino resources
 // UNcomment them to activate the related debug output
@@ -36,7 +28,6 @@
 
 
 // constructor
-//SHzigbee::SHzigbee(const char* portName)
 SHzigbee::SHzigbee(void)
 {
 	_initXmitAPIframe();
@@ -47,6 +38,8 @@ SHzigbee::SHzigbee(void)
 	ZBnewFrameRXed = NO;
 	newSHmsgRX = NO;
 	ZBinFrameRX = NO;
+
+	SHcmdEventNeedsLogged = NO;
 }
 
 
@@ -58,8 +51,7 @@ SHzigbee::~SHzigbee(void)
 #endif // 0
 
 
-// set teh seria lport baud rate used for Zigbee communications
-//bool SHzigbee::start(unsigned int baud_rate)
+// set the serial port baud rate used for Zigbee communications
 bool SHzigbee::start(const char* portName, unsigned int baud_rate)
 {
     shSerialPortZigbee.start(portName, baud_rate);
@@ -101,8 +93,8 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
     // initialize the Zigbee TX API frame checksum before calculating it
     myZBframeTX.ZBfrmChksum = 0;
 
-    // Get data our of our Zigbee frame struct and into a buffer array of bytes/uint8_t
-    // for Serial.write() call to Zbee module
+    // Get data out of our Zigbee frame struct and into a buffer array of bytes/uint8_t
+    // for Serial write call to Zigbee module
 
     _ZBfrmBufferTX[ZB_FRM_OFFSET_DELMTR]       = myZBframeTX.ZBfrmDelimiter; //(uint8_t)0x7e;
 
@@ -185,17 +177,6 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
     _ZBfrmBufferTX[ZB_FRM_OFFSET_TX_CHKSUM] = myZBframeTX.ZBfrmChksum; //(uint8_t)0xf4; //myZBframeTX.ZBfrmChksum;
 
 
-#if 0
-    Serial.println("");
-    uint8_t i=0;
-    for(i-0; i<ZB_TX_FRM_BYTES; i++)
-    {
-        Serial.print( _ZBfrmBufferTX[i], HEX );
-        Serial.print(" ");
-    }
-    Serial.println("");
-#endif
-
 #ifdef SERIALPORT_ARDUINO
 //    Serial.println("");
 
@@ -211,6 +192,8 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
 
 }
 
+
+// debug output the Transmit buffer to a popup window
 void SHzigbee::_debugPrintZBframeBufTX(void)
 {
     int i=0;
@@ -227,6 +210,7 @@ void SHzigbee::_debugPrintZBframeBufTX(void)
 }
 
 
+// debug output the Receive buffer to a popup window
 void SHzigbee::_debugPrintZBframeBufRX(void)
 {
     int i=0;
@@ -243,6 +227,7 @@ void SHzigbee::_debugPrintZBframeBufRX(void)
 }
 
 
+// calculate and return 8bit checksum for given 8bit value
 uint8_t SHzigbee::_calcChkSum8(uint8_t ui8)
 {
 //    Serial.print(ui8, HEX);
@@ -250,6 +235,7 @@ uint8_t SHzigbee::_calcChkSum8(uint8_t ui8)
     return(ui8);
 }
 
+// calculate and return 16bit checksum for given 8bit value
 uint8_t SHzigbee::_calcChkSum16(uint16_t ui16)
 {
     uint8_t *ptrUI8AsUi16 = (uint8_t *)&ui16;
@@ -265,6 +251,7 @@ uint8_t SHzigbee::_calcChkSum16(uint16_t ui16)
     return(tmpChkSum);
 }
 
+// calculate and return 32bit checksum for given 8bit value
 uint8_t SHzigbee::_calcChkSum32(uint32_t ui32)
 {
     uint8_t *ptrUI8AsUi32 = (uint8_t *)&ui32;
@@ -287,20 +274,6 @@ uint8_t SHzigbee::_calcChkSum32(uint32_t ui32)
 }
 
 
-#if 0
-//void DEBUGprintTXfrmChkSum(uint8_t chkSum)
-void SHzigbee::DEBUGprintTXfrmChkSum(void)
-{
-    #if 0
-    Serial.print("<cs=");
-    //Serial.println(chkSum);
-    Serial.print(myZBframeTX.ZBfrmChksum, HEX);
-    Serial.print("> ");
-    #endif
-}
-#endif
-
-
 // Prepare the TX frame message payload to be sent
 void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
                              uint16_t prepSHsrcID,      // Source ID
@@ -313,6 +286,7 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
 {
     uint8_t tmpChkSum = 0;
 
+    // clear the checksum value from previous message
     myZBframeTX.ZBfrmPayload.SHpayldChksum= 0;
 
     // ints are 16bit Little Endian, longs are 32bit Little Endian
@@ -347,22 +321,14 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
     // finish calc payload message checksum
     tmpChkSum = (uint8_t)0xff - tmpChkSum;
     myZBframeTX.ZBfrmPayload.SHpayldChksum  = tmpChkSum;
-
-    #if 0
-    Serial.print("<mcs=");
-    Serial.print(myZBframeTX.ZBfrmPayload.SHpayldChksum, HEX);
-    Serial.print("> ");
-    #endif
 }
 
 
+// return the SmartHome message type for this Zigbee frame
 uint8_t SHzigbee::getMsgTypeTX(void)
 {
     return( myZBframeTX.ZBfrmPayload.SHmsgType);
 }
-
-
-
 
 
 // Receive (attempt to) a Zigbee API RX Received Frame
@@ -443,6 +409,12 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 
     		    // indicate to other code that a new SmartHome message has been received for processing
 		        newSHmsgRX = YES;
+
+                if(1) //(SH_MSG_TYPE_COMPLETED == myZBframeRX.ZBfrmPayload.SHmsgType)
+                {
+                    //Server logs ALL completed messages, regardless of control/load IDs involved
+                    SHcmdEventNeedsLogged= YES;
+                }
 	        }
 
 	        // indicate no longer still receiving a ZB frame
@@ -452,7 +424,7 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 }
 
 
-// Copy the various data fields from the RX Zigbee frame buffer for use
+// Copy the various data fields from the RX Zigbee frame buffer into a struct for use
 void SHzigbee::_parseZBbufferRX(void)
 {
     // use some pointer to unsigned int 8 (byte) to access parts of larger datatypes a byte at a time during Zigbee frame receive
@@ -616,6 +588,7 @@ void SHzigbee::_parseZBbufferRX(void)
 //void SHzigbee::_debugPrintZBframeBufRX(void)
 //{
 #ifdef DEBUG_ZB_RECEIVE
+    // Arduino code
     uint16_t i=0;
 
     Serial.print("RX ZF Frame = ");
@@ -633,6 +606,7 @@ void SHzigbee::_parseZBbufferRX(void)
 void SHzigbee::_debugPrintZBframeStructRX(void)
 {
 #ifdef DEBUG_ZB_RECEIVE
+    // Arduino code
 
 //    Serial.print("myZBframeRX.ZBfrmDelimiter (hex) = ");
     Serial.print(myZBframeRX.ZBfrmDelimiter, HEX);
@@ -721,6 +695,7 @@ void SHzigbee::_debugPrintZBframeStructRX(void)
 void SHzigbee::_debugPrintSHmsgRX(void)
 {
 #ifdef DEBUG_ZB_RECEIVE
+    // Arduino code
 
 //    Serial.print("SHmsgRX.SHdestID (hex) = ");
     Serial.print(SHmsgRX.SHdestID, HEX);
