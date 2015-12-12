@@ -284,14 +284,16 @@ void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 {
     _changeRoom(ROOM_CHANGE_ROTR);
 
-    wxLogMessage( "Button Room Right" ) ;
+//    wxLogMessage( "Button Room Right" ) ;
+//    wxLogMessage( "Button Room Right, %d:0x%.4x", shCurrentLoadNodeInfo.SHthisNodeLoc, shCurrentLoadNodeInfo.SHthisNodeID ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 {
     _changeRoom(ROOM_CHANGE_ROTL);
 
-    wxLogMessage( "Button Room Left" ) ;
+//    wxLogMessage( "Button Room Left" ) ;
+//    wxLogMessage( "Button Room Left, %d:0x%.4x", currentRoomNum, currentLoadNumInRoom ) ;
 }
 
 
@@ -299,14 +301,14 @@ void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 {
     _changeLoad(LOAD_CHANGE_ROTR);
 
-    wxLogMessage( "Button Load Right, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
+//    wxLogMessage( "Button Load Right, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 {
     _changeLoad(LOAD_CHANGE_ROTL);
 
-    wxLogMessage( "Button Load Left, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
+//    wxLogMessage( "Button Load Left, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 }
 
 
@@ -597,6 +599,8 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
     shCurrentLoadNodeInfo.SHthisNodeLoc   = DEFAULT_ROOM_NUM;
     currentRoomNum = DEFAULT_ROOM_NUM;
     shCurrentRoomName                     = SHgetRoomNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
+    numRooms                              = getNumRoomsFromStorage();
+    lastRoomNum = numRooms - 1;
 
     curNumLoadsInRoom                     = getNumLoadsInRoomFromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
     lastLoadNumInRoom                     = curNumLoadsInRoom - 1; // start at 0
@@ -642,11 +646,39 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
 }
 
 
+// Look on SD card for number of rooms.
+// Each room on SD card is a directory with same name as its room number.
+// Cycle through the numbers, starting with first load number of 0 and counting up,
+// until a dir name for value N is not found.
+uint16_t wxSmartHomeServerFrame::getNumRoomsFromStorage(void)
+{
+    uint16_t tmpRoomNum=0, tmpNumRooms=0;
+    wxString roomNumFileName = "0";  // default room number
+
+    tmpRoomNum = 0;
+    roomNumFileName = shPathRooms + wxString::Format("%d", tmpRoomNum);
+    if( ! wxDir::Exists(roomNumFileName) )
+    {
+        return(ROOM_NO_LOADS);
+    }
+    // have at least one room, count as many as we can find
+    while( (tmpRoomNum <= NUM_ROOMS_MAX) && wxDir::Exists(roomNumFileName) )
+    {
+        tmpNumRooms += 1;
+
+        tmpRoomNum += 1;
+        roomNumFileName = shPathRooms + wxString::Format("%d", tmpRoomNum);
+    }
+
+    return(tmpNumRooms);
+}
+
+
 // Look on SD card for number of loads in the given room.
 // Each room on SD card is a directory with same name as its room number.
 // Each load on SD is a few files with names of load number DOT extension, such as 0.BIN or 1.BIN etc.
 // Cycle through the numbers, starting with first load number of 0 and counting up,
-// until an N.BIN file is not found for that eval load number N.
+// until an N.BIN file is not found for that N value load number.
 uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromStorage(uint16_t roomNum)
 {
     uint16_t tmpLoadNum=0, tmpNumLoadsInRoom=0, lastLoadNumInRoom=0;
@@ -654,7 +686,6 @@ uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromStorage(uint16_t roomNum)
     wxString loadNumFileName = "/65535/255.BIN";  // default longest filename to make sure have enough chars in string
 
     roomNumFileName = shPathRooms + wxString::Format("%d", roomNum);
-//    if( ! wxFile::Exists(roomNumFileName) )
     if( ! wxDir::Exists(roomNumFileName) )
     {
         return(ROOM_NO_LOADS);
@@ -665,7 +696,7 @@ uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromStorage(uint16_t roomNum)
     tmpNumLoadsInRoom = 0;
     loadNumFileName = shPathRooms + wxString::Format("%d", roomNum)
                     + "/" + wxString::Format("%d", tmpLoadNum) + ".BIN" ;
-    while( (tmpLoadNum <= 65536) && wxFile::Exists(loadNumFileName)  )
+    while( (tmpLoadNum <= NUM_LOADS_MAX) && wxFile::Exists(loadNumFileName)  )
     {
         tmpLoadNum += 1;
         tmpNumLoadsInRoom += 1;
@@ -673,7 +704,7 @@ uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromStorage(uint16_t roomNum)
                         + "/" + wxString::Format("%d", tmpLoadNum) + ".BIN" ;
     }
 
-    wxLogMessage( "Room %d has %d loads in it", roomNum, tmpNumLoadsInRoom ) ;
+//    wxLogMessage( "Room %d has %d loads in it", roomNum, tmpNumLoadsInRoom ) ;
 
     return(tmpNumLoadsInRoom);
 }
@@ -729,7 +760,32 @@ wxString  wxSmartHomeServerFrame::SHgetRoomNamefromStorage(uint16_t roomNum)
 // wrap around from MAX to 0, or from 0 to MAX
 void wxSmartHomeServerFrame::_changeRoom(uint8_t changeDirection)
 {
+   uint16_t newRoom = ROOM_FIRST;
 
+    if(changeDirection == ROOM_CHANGE_ROTR)  // Rotate Right == Increment with wraparound back to 0
+    {
+        if(currentRoomNum == lastRoomNum)
+        {
+            newRoom = ROOM_FIRST;
+        }
+        else
+        {
+            newRoom = currentRoomNum + 1;
+        }
+    }
+    else if(changeDirection == ROOM_CHANGE_ROTL) // Rotate Left == Decrement with wraparound back to lsat room
+    {
+        if(currentRoomNum == ROOM_FIRST)
+        {
+            newRoom = lastRoomNum;
+        }
+        else
+        {
+            newRoom = currentRoomNum - 1;
+        }
+    }
+
+    selectRoom(newRoom);
 }
 
 // change room by moving one step in the given direction in the room number ID
@@ -771,6 +827,64 @@ void wxSmartHomeServerFrame::_changeLoad(uint8_t changeDirection)
     selectLoad(newLoad);
 }
 
+void wxSmartHomeServerFrame::selectRoom(uint16_t roomNum)
+{
+   uint16_t tmpNumLoadsInRoom = 0;
+
+    if( (roomNum >= 0) && (roomNum <= lastRoomNum) )
+    {
+//        Serial.print("Selecting ");
+//        Serial.print(roomNum, DEC);
+//        Serial.println(" as current room");
+
+        tmpNumLoadsInRoom = getNumLoadsInRoomFromStorage(roomNum);
+
+        if( tmpNumLoadsInRoom == ROOM_NO_LOADS)
+        {
+            // ERROR, no loads in this room to drive, do nothing
+        }
+        else
+        {
+            // update room number
+            currentRoomNum = roomNum;
+            curNumLoadsInRoom = tmpNumLoadsInRoom;
+        }
+
+            lastLoadNumInRoom = curNumLoadsInRoom - 1;
+            currentLoadNumInRoom = DEFAULT_LOAD_NUM;
+//            curLoadID = SHgetLoadNodeIDfromStorage(roomNum, currentLoadNumInRoom);
+//            curLoadNodeInfo.SHthisNodeType = SHgetLoadNodeTypefromStorage(currentRoomNum, currentLoadNumInRoom);
+
+#if 0 // Arduino
+            Serial.print("curNumLoadsInRoom = ");
+            Serial.println(curNumLoadsInRoom, DEC);
+
+            Serial.print("Current Room = ");
+            Serial.print(currentRoomNum, DEC);
+            Serial.print(" ; Last Room = ");
+            Serial.print(lastRoomNum, DEC);
+            Serial.print(" ; Current Load = ");
+            Serial.print(currentLoadNumInRoom, DEC);
+            Serial.print(" ; Last Load = ");
+            Serial.print(lastLoadNumInRoom, DEC);
+            Serial.println("");
+
+            lcdDrawRoomBtn(roomNum);
+#endif // 0
+            // update the GUI display with new room name
+            shGUIupdateRoomName(currentRoomNum);
+
+            selectLoad(DEFAULT_LOAD_NUM);
+    }
+    else
+    {
+        // invalid room umber, do nothing
+
+//        Serial.print("ERROR - Invalid room number ");
+//        Serial.println(roomNum, DEC);
+    }
+
+}
 
 // select the given load number, in the current room, as the currently controlled load by this wall control unit
 void wxSmartHomeServerFrame::selectLoad(uint16_t loadNum)

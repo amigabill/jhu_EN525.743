@@ -71,13 +71,14 @@ class wxSmartHomeServerFrame: public wxFrame
         void    shGUIupdateRoomName(uint16_t roomNum);
         void    shGUIupdateLoadName(uint16_t roomNum, uint8_t loadNum);
 
-
+        uint16_t getNumRoomsFromStorage(void);
         uint16_t getNumLoadsInRoomFromStorage(uint16_t roomNum);
 
 
     private:
 
         uint16_t    lastRoomNum            = DEFAULT_ROOM_NUM;
+        uint16_t    numRooms               = 0;
         uint16_t    currentRoomNum         = DEFAULT_ROOM_NUM;
         uint16_t    curNumLoadsInRoom      = 0;
         uint8_t     lastLoadNumInRoom      = DEFAULT_LOAD_NUM;
@@ -112,6 +113,7 @@ class wxSmartHomeServerFrame: public wxFrame
         wxString  SHgetRoomNamefromStorage(uint16_t roomNum);
         wxString  SHgetLoadNamefromStorage(uint16_t roomNum, uint16_t loadNum);
         void     _changeRoom(uint8_t changeDirection);
+        void      selectRoom(uint16_t roomNum);
         void     _changeLoad(uint8_t changeDirection);
         void      selectLoad(uint16_t loadNum);
 

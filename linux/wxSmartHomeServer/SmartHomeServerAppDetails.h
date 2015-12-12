@@ -22,6 +22,9 @@ const wxString SH_CTRL_EVENT_LOG_FILENAME = "/home/smarthome/.wxSmartHome/shEven
 //const char* SH_SERVER_SERIAL_PORT_NAME = "/dev/ttyUSB0";
 //const int   SH_SERVER_SERIAL_BAUD_RATE = 9600;
 
+#define NUM_ROOMS_MAX  65535
+#define NUM_LOADS_MAX  65535
+
 
 
 #endif // SMARTHOMESERVERAPPDETAILS_H_INCLUDED
