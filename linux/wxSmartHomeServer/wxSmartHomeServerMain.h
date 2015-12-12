@@ -52,6 +52,7 @@ class wxSmartHomeServerFrame: public wxFrame
         wxTextCtrl* shTextCtrlCurrentDate;
         wxTextCtrl* shTextCtrlCurrentTime;
         wxGauge*    shIntensityGauge;
+        uint8_t     shGetNewLoadCurIntensity = NO; // flag indicates if need to ask load via Zigbee for its current intensity
 
         //#define SH_DEBUG_LOG_FILENAME  "/home/billt/shDebugLog.log"
         const wxString SH_DEBUG_LOG_FILENAME  = "/home/billt/shDebugLog.log";
@@ -67,15 +68,25 @@ class wxSmartHomeServerFrame: public wxFrame
 
         // Additional SmartHome functions
         void    SHguageDrawCurrentIntensity(void);
+        void    shGUIupdateRoomName(uint16_t roomNum);
+        void    shGUIupdateLoadName(uint16_t roomNum, uint8_t loadNum);
 
-        uint16_t getNumLoadsInRoomFromSorage(uint16_t roomNum);
+
+        uint16_t getNumLoadsInRoomFromStorage(uint16_t roomNum);
 
 
     private:
 
-        uint8_t     shCurrentIntensity;
+        uint16_t    lastRoomNum            = DEFAULT_ROOM_NUM;
+        uint16_t    currentRoomNum         = DEFAULT_ROOM_NUM;
+        uint16_t    curNumLoadsInRoom      = 0;
+        uint8_t     lastLoadNumInRoom      = DEFAULT_LOAD_NUM;
+        uint8_t     currentLoadNumInRoom   = DEFAULT_LOAD_NUM;
+        uint8_t     shCurrentIntensity     = LOAD_INTENSITY_FULL_OFF;      //selected load's current intensity level
+        uint8_t     curSHcmdRepeats        = 0; // number of succesive presses/clicks of same GUI button
+
         uint8_t    *ptrThisNodeID = (uint8_t *)&shThisNodeID;
-        uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan
+        uint8_t     shThisNodeType;         // 0=ctrl, 1=light, 2=fan, 3=server
         FILE       *FILEshEventsLog;
 
 
@@ -100,6 +111,9 @@ class wxSmartHomeServerFrame: public wxFrame
         uint8_t   SHgetLoadNodeTypefromStorage(uint16_t roomNum, uint16_t loadNum);
         wxString  SHgetRoomNamefromStorage(uint16_t roomNum);
         wxString  SHgetLoadNamefromStorage(uint16_t roomNum, uint16_t loadNum);
+        void     _changeRoom(uint8_t changeDirection);
+        void     _changeLoad(uint8_t changeDirection);
+        void      selectLoad(uint16_t loadNum);
 
 
         //(*Identifiers(wxSmartHomeServerFrame)

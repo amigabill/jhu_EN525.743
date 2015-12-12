@@ -19,6 +19,7 @@
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/msgdlg.h>
+#include <wx/dir.h>
 //*)
 
 #include "SmartHomeServerAppDetails.h"
@@ -222,21 +223,16 @@ wxSmartHomeServerFrame::wxSmartHomeServerFrame(wxWindow* parent,wxWindowID id)
     SHinitServerNodeInfo();
 //    wxLogMessage( "Server Node ID = 0x%.4x ; Server Node Type = %d", shThisNodeID, shThisNodeType ) ;
 
-
     // initialize default load Node Info struct data
     SHinitLoadNodeInfo();
 
     // update the GUI display with Room and Load names on their button areas
-    shTextCtrlRoomName->Clear();
-    shTextCtrlRoomName->AppendText(shCurrentRoomName);
-    shTextCtrlLoadName->Clear();
-    shTextCtrlLoadName->AppendText(shCurrentLoadName);
-
-    // start the serial port with SmartHome system Zigbee settings
-//    shServerSerialPort.start(9600);
-
-    // test for debugging to see if serial is alive
-//    shServerSerialPort.txSend('d');
+//    shTextCtrlRoomName->Clear();
+//    shTextCtrlRoomName->AppendText(shCurrentRoomName);
+    shGUIupdateRoomName(currentRoomNum);
+//    shTextCtrlLoadName->Clear();
+//    shTextCtrlLoadName->AppendText(shCurrentLoadName);
+    shGUIupdateLoadName(currentRoomNum, currentLoadNumInRoom);
 
     // open the SmartHome events log file for reading AND writing, create file if necessary
     #define FILENAME_SH_EVENTS_LOG "/home/smarthome/.wxSmartHome/shEvents.log"
@@ -286,26 +282,31 @@ void wxSmartHomeServerFrame::OnAbout(wxCommandEvent& event)
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomRightClick(wxCommandEvent& event)
 {
+    _changeRoom(ROOM_CHANGE_ROTR);
 
     wxLogMessage( "Button Room Right" ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnRoomLeftClick(wxCommandEvent& event)
 {
+    _changeRoom(ROOM_CHANGE_ROTL);
 
     wxLogMessage( "Button Room Left" ) ;
 }
 
+
 void wxSmartHomeServerFrame::OnshBMPbtnLoadRightClick(wxCommandEvent& event)
 {
+    _changeLoad(LOAD_CHANGE_ROTR);
 
-    wxLogMessage( "Button Load Right" ) ;
+    wxLogMessage( "Button Load Right, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 }
 
 void wxSmartHomeServerFrame::OnshBMPbtnLoadLeftClick(wxCommandEvent& event)
 {
+    _changeLoad(LOAD_CHANGE_ROTL);
 
-    wxLogMessage( "Button Load Left" ) ;
+    wxLogMessage( "Button Load Left, 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 }
 
 
@@ -594,20 +595,18 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
     shCurrentIntensity = LOAD_INTENSITY_FULL_OFF; // 0
 
     shCurrentLoadNodeInfo.SHthisNodeLoc   = DEFAULT_ROOM_NUM;
-    // TODO get room name from storage text file and display to GUI
-    // _shCurrentRoomName = SHgetRoomNameFromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
-    //shTextCtrlRoomName->Clear();
-    //shTextCtrlRoomName->Append(_shCurrentRoomName);
-
-    shCurrentLoadNodeInfo.SHthisNodeID    = SHgetLoadNodeIDfromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
-    shCurrentLoadNodeInfo.SHthisNodeType  = SHgetLoadNodeTypefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
+    currentRoomNum = DEFAULT_ROOM_NUM;
     shCurrentRoomName                     = SHgetRoomNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
-    shCurrentLoadName                     = SHgetLoadNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, DEFAULT_LOAD_NUM);
 
-    // TODO get load name from storage text file and display to GUI
-    // _shCurrentLoadName = SHgetLoadNameFromStorage(DEFAULT_LOAD_NUM);
-    //shTextCtrlLoadName->Clear();
-    //shTextCtrlLoadName->Append(_shCurrentLoadName);
+    curNumLoadsInRoom                     = getNumLoadsInRoomFromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc);
+    lastLoadNumInRoom                     = curNumLoadsInRoom - 1; // start at 0
+    currentLoadNumInRoom                  = DEFAULT_LOAD_NUM;
+    shCurrentLoadName                     = SHgetLoadNamefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, currentLoadNumInRoom);
+    shGUIupdateLoadName(currentRoomNum, currentLoadNumInRoom);
+
+    shCurrentLoadNodeInfo.SHthisNodeID    = SHgetLoadNodeIDfromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, currentLoadNumInRoom);
+    shCurrentLoadNodeInfo.SHthisNodeType  = SHgetLoadNodeTypefromStorage(shCurrentLoadNodeInfo.SHthisNodeLoc, currentLoadNumInRoom);
+
 
     shCurrentLoadNodeInfo.SHthisNodePin   = 0; // pin is an Arduino thing, not used in Server code
 
@@ -648,30 +647,35 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
 // Each load on SD is a few files with names of load number DOT extension, such as 0.BIN or 1.BIN etc.
 // Cycle through the numbers, starting with first load number of 0 and counting up,
 // until an N.BIN file is not found for that eval load number N.
-uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromSorage(uint16_t roomNum)
+uint16_t wxSmartHomeServerFrame::getNumLoadsInRoomFromStorage(uint16_t roomNum)
 {
-    uint16_t tmpLoadNum = 0, lastLoadNumInRoom = 0;
+    uint16_t tmpLoadNum=0, tmpNumLoadsInRoom=0, lastLoadNumInRoom=0;
+    wxString roomNumFileName = "0";  // default room number
     wxString loadNumFileName = "/65535/255.BIN";  // default longest filename to make sure have enough chars in string
 
-    loadNumFileName = shPathRooms + wxString::Format("%d", roomNum);
-    if( ! wxFile::Exists(loadNumFileName) )
+    roomNumFileName = shPathRooms + wxString::Format("%d", roomNum);
+//    if( ! wxFile::Exists(roomNumFileName) )
+    if( ! wxDir::Exists(roomNumFileName) )
     {
         return(ROOM_NO_LOADS);
     }
 
-
-    // Get last load number for the default room
+    //count the number of loads in the room
     tmpLoadNum = 0;
-    do
+    tmpNumLoadsInRoom = 0;
+    loadNumFileName = shPathRooms + wxString::Format("%d", roomNum)
+                    + "/" + wxString::Format("%d", tmpLoadNum) + ".BIN" ;
+    while( (tmpLoadNum <= 65536) && wxFile::Exists(loadNumFileName)  )
     {
-        lastLoadNumInRoom = tmpLoadNum;
         tmpLoadNum += 1;
+        tmpNumLoadsInRoom += 1;
         loadNumFileName = shPathRooms + wxString::Format("%d", roomNum)
-                        + "/" + wxString::Format("%d", lastLoadNumInRoom) + ".BIN" ;
-    } while( (tmpLoadNum <= 65536) && wxFile::Exists(loadNumFileName)  );
+                        + "/" + wxString::Format("%d", tmpLoadNum) + ".BIN" ;
+    }
 
-    // first is number 0, so add 1 to the last number detected for how many there are
-    return(lastLoadNumInRoom+1);
+    wxLogMessage( "Room %d has %d loads in it", roomNum, tmpNumLoadsInRoom ) ;
+
+    return(tmpNumLoadsInRoom);
 }
 
 
@@ -717,3 +721,119 @@ wxString  wxSmartHomeServerFrame::SHgetRoomNamefromStorage(uint16_t roomNum)
 
     return(tmpRoomName);
 }
+
+
+// change room by moving one step in the given direction in the room number ID
+// Rotate Right = increase room ID by 1
+// Rotate Left - decrease room ID by 1
+// wrap around from MAX to 0, or from 0 to MAX
+void wxSmartHomeServerFrame::_changeRoom(uint8_t changeDirection)
+{
+
+}
+
+// change room by moving one step in the given direction in the room number ID
+// Rotate Right = increase room ID by 1
+// Rotate Left - decrease room ID by 1
+// wrap around from MAX to 0, or from 0 to MAX
+void wxSmartHomeServerFrame::_changeLoad(uint8_t changeDirection)
+{
+    uint16_t newLoad = DEFAULT_LOAD_NUM;
+
+    if(curNumLoadsInRoom == 1)
+    {
+        // if only have one load in this room then no change from current load number
+        newLoad = currentLoadNumInRoom;
+    }
+    else if(changeDirection == LOAD_CHANGE_ROTR)  // Rotate Right == Increment with wraparound back to 0
+    {
+        if(currentLoadNumInRoom == lastLoadNumInRoom)
+        {
+            newLoad = LOAD_FIRST;
+        }
+        else
+        {
+            newLoad = currentLoadNumInRoom + 1;
+        }
+    }
+    else if(changeDirection == LOAD_CHANGE_ROTL) // Rotate Left == Decrement with wraparound back to last load
+    {
+        if(currentLoadNumInRoom == LOAD_FIRST)
+        {
+            newLoad = lastLoadNumInRoom;
+        }
+        else
+        {
+            newLoad = currentLoadNumInRoom - 1;
+        }
+    }
+
+    selectLoad(newLoad);
+}
+
+
+// select the given load number, in the current room, as the currently controlled load by this wall control unit
+void wxSmartHomeServerFrame::selectLoad(uint16_t loadNum)
+{
+    if( (loadNum >= 0) && (loadNum <= lastLoadNumInRoom) )
+    {
+        // update load number and type
+        currentLoadNumInRoom = loadNum;
+
+        shCurrentLoadNodeInfo.SHthisNodeLoc  = currentRoomNum;
+        shCurrentLoadNodeInfo.SHthisNodeType = SHgetLoadNodeTypefromStorage(currentRoomNum, loadNum);
+        shCurrentLoadNodeInfo.SHthisNodeID   = SHgetLoadNodeIDfromStorage(currentRoomNum, loadNum);
+
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID; // this wall control is the other node ID to a load receiver node
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_ST_IDLE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_NOP;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+        shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
+        // reset our command repeat counter for the new load, not counting them across different loads
+        curSHcmdRepeats = 0;
+
+        // Draw the new load name on the GUI display
+        //lcdDrawLoadBtn(currentRoomNum, loadNum);  // Arduino function
+        shGUIupdateLoadName(currentRoomNum, currentLoadNumInRoom);
+
+        // Request current setting and powered state for drawing the current level indicator
+//        shCurrentLoadNodeInfo.SHthisNodeIsPowered = SHloadRequestPoweredState(shCurrentLoadNodeInfo.SHthisNodeID);
+//        shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = SHloadRequestCurrentIntensity(shCurrentLoadNodeInfo.SHthisNodeID);
+        shGetNewLoadCurIntensity = YES; // set flag to ask the load for current intensity via Zigbee/serial
+
+        // Draw the effective current level indicator for this load to LCD
+        //lcdDrawCurLevel();           // Arduino function
+        SHguageDrawCurrentIntensity(); // Linux function
+
+    }
+    else
+    {
+        // invalid load number for this room, stay at current load number for this room
+    }
+}
+
+
+void wxSmartHomeServerFrame::shGUIupdateRoomName(uint16_t roomNum)
+{
+    shCurrentRoomName = SHgetRoomNamefromStorage(roomNum);
+    shTextCtrlRoomName->Clear();
+    shTextCtrlRoomName->AppendText(shCurrentRoomName);
+}
+
+
+void wxSmartHomeServerFrame::shGUIupdateLoadName(uint16_t roomNum, uint8_t loadNum)
+{
+    shCurrentLoadName = SHgetLoadNamefromStorage(roomNum, loadNum);
+    shTextCtrlLoadName->Clear();
+    shTextCtrlLoadName->AppendText(shCurrentLoadName);
+}
+

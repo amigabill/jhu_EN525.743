@@ -85,9 +85,6 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 
         /* ... */
 
-        // check if a new Zigbee frame/SmartHome message has been received an dprocess it
-
-        // check if a new Zigbee frame/SmartHome message is ready to send out
 
         // check if the SmartHome event log file has been updated,
         // and write new content to LCD display text area
@@ -106,6 +103,8 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
 // where to put this, not ONLY in  _doServerNodeIDmsgSM                       _mySHzigbee.newSHmsgRX = NO;
         }
 
+        // check if a new Zigbee frame/SmartHome message has been received and process it
+        // check if a new Zigbee frame/SmartHome message is ready to send out
         // Check in on SmartHome Zigbee messaging state machine for anything to do (ready to transmit or already received)
         if( (YES == Frame->shCurrentLoadNodeInfo.newSHmsgTX) || (YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX) )
         {
@@ -116,6 +115,11 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
         if(NO == _mySHzigbee.ZBinFrameRX)
         {
             _mySHzigbee.zbRcvAPIframe();
+        }
+
+        if(YES == Frame->shGetNewLoadCurIntensity)
+        {
+            _shGUIupdateLoadIntensityLevel();
         }
     }
 
@@ -430,4 +434,12 @@ uint8_t wxSmartHomeServerApp::_SHsendZBserialData(void)
 {
 
 
+}
+
+
+void wxSmartHomeServerApp::_shGUIupdateLoadIntensityLevel(void)
+{
+
+    // clear the flag to avoid duplicate triggers into here
+    Frame->shGetNewLoadCurIntensity = NO;
 }

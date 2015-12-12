@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1449818768 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
+1449907010 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.cpp
 	"wxSmartHomeServerApp.h"
 	"wxSmartHomeServerMain.h"
 	<wx/image.h>
@@ -8,7 +8,7 @@
 	<wx/log.h>
 	"SmartHomeServerAppDetails.h"
 
-1449800911 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.h
+1449906885 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerApp.h
 	<wx/app.h>
 	<wx/file.h>
 	<wx/log.h>
@@ -590,7 +590,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/app.h
 
-1449821476 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
+1449910780 /home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.h
 	<wx/gauge.h>
 	<wx/bmpbuttn.h>
 	<wx/checkbox.h>
@@ -1126,7 +1126,7 @@
 
 1414317466 /usr/include/wx-3.0/wx/gtk/checkbox.h
 
-1449823478 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
+1449910350 source:/home/billt/projects/jhu_EN525.743/linux/wxSmartHomeServer/wxSmartHomeServerMain.cpp
 	"wxSmartHomeServerMain.h"
 	"wx/defs.h"
 	"wx/wxprec.h"
@@ -1136,6 +1136,7 @@
 	<wx/bitmap.h>
 	<wx/image.h>
 	<wx/msgdlg.h>
+	<wx/dir.h>
 	"SmartHomeServerAppDetails.h"
 	<iostream>
 	<fstream>
@@ -1742,4 +1743,9 @@
 	"SmartHomeServerAppDetails.h"
 	"SmartHome_Zigbee_Linux.h"
 	"shLinuxSerialPort.h"
+
+1414317465 /usr/include/wx-3.0/wx/dir.h
+	"wx/longlong.h"
+	"wx/string.h"
+	"wx/filefn.h"
 

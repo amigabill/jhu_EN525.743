@@ -32,7 +32,7 @@
 #define DEFAULT_LOAD_NUM LOAD_FIRST
 #define LOAD_CHANGE_ROTR (uint8_t)0x01
 #define LOAD_CHANGE_ROTL (uint8_t)0x00
-#define ROOM_NO_LOADS (uint16_t)0xffff
+#define ROOM_NO_LOADS (uint16_t)0 //(uint16_t)0xffff //error code
 
 
 typedef struct
