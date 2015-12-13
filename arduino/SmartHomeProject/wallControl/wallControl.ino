@@ -1264,7 +1264,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
     // update to previous iteration's next state
     curLoadNodeInfo.SHmsgCurrentState = curLoadNodeInfo.SHmsgNextState;
 
-    #if 1 //goober
+    #if 1
     Serial.print("Entering doWCnodeIDmsgSM - newSHmsgTX=");
     Serial.print(curLoadNodeInfo.newSHmsgTX, HEX);
     Serial.print(" - mySHzigbee.newSHmsgRX=");
@@ -1382,9 +1382,9 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
 
             // compare message src ID with the currently selected load ID
             //should only be in here if the load IDs match the currently selected, even if dest is some other node than this one
-//            if(1) //received an appropriate confirmation message
+//            if(1) //?change to if received an appropriate confirmation message?
             if( (mySHzigbee.SHmsgRX.SHdestID == thisWCnodeID) ||              // message addressed to this WD node
-                (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID)  // message sent fromthe currently selected load
+                (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID)  // message sent from the currently selected load
               )
             {
 
@@ -1398,7 +1398,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                     case SH_CMD_LOAD_READCRNT:
                     case SH_CMD_LOAD_GOTOFAV: // implies will be powered, as FAV cannot be full-off level
                         curLoadNodeInfo.SHthisNodeLevelFav = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
-                        curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
+//                        curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeMsg.SHstatusH; //this breaks READCRNT
                         
                         // NO break here so we also get the Powered and LevelCurrent values below
                     
@@ -1739,7 +1739,7 @@ void selectLoad(uint16_t loadNum)
 
             curLoadNodeInfo.SHthisNodeMsg.SHothrID = thisWCnodeID; // this wall control is the other node ID to a load receiver node
             curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_ST_IDLE;
-            curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_NOP;
+            curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_READCRNT;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusL = 0;
             curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
@@ -1759,8 +1759,14 @@ void selectLoad(uint16_t loadNum)
         lcdDrawLoadBtn(currentRoomNum, loadNum);     
 
         // Request current setting and powered state for drawing the current level indicator
-        curLoadNodeInfo.SHthisNodeIsPowered = SHloadRequestPoweredState(curLoadNodeInfo.SHthisNodeID);
-        curLoadNodeInfo.SHthisNodeLevelCurrent = SHloadRequestCurrentIntensity(curLoadNodeInfo.SHthisNodeID);
+//        curLoadNodeInfo.SHthisNodeIsPowered = SHloadRequestPoweredState(curLoadNodeInfo.SHthisNodeID);
+//        curLoadNodeInfo.SHthisNodeLevelCurrent = SHloadRequestCurrentIntensity(curLoadNodeInfo.SHthisNodeID);
+
+        //do a Read Current command to the newly selected load to get it's current level, isPowered states
+        curLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_READCRNT;
+        curLoadNodeInfo.newSHmsgTX = YES;
+        curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
+        curLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
 
         // Draw the effective current level indicator for this load to LCD
 #if 0        
@@ -1773,7 +1779,8 @@ void selectLoad(uint16_t loadNum)
             lcdDrawLvlIndicator(curLoadNodeInfo.SHthisNodeLevelCurrent);
         }
 #endif
-        lcdDrawCurLevel();
+        //deprecated?? since we now redraw level indicator when receive command completed message for selected load ID
+//        lcdDrawCurLevel();
         
         Serial.print("Selecting room ");
         Serial.print(curLoadNodeInfo.SHthisNodeLoc, DEC);
@@ -1794,6 +1801,15 @@ void selectLoad(uint16_t loadNum)
         Serial.print(" Load Node ID is ");
         Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
         Serial.println();
+
+        Serial.print("    Should be ready to read current level from load: curLoadNodeInfo.SHthisNodeMsg.SHcommand=");
+        Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
+        Serial.print(" ; curLoadNodeInfo.newSHmsgTX=");
+        Serial.print(curLoadNodeInfo.newSHmsgTX, HEX);
+        Serial.print(" ; curLoadNodeInfo.SHmsgNextState=");
+        Serial.print(curLoadNodeInfo.SHmsgNextState, HEX);
+        Serial.println();
+
     }
     else
     {
