@@ -99,14 +99,13 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
         if(YES == _mySHzigbee.SHcmdEventNeedsLogged)
         {
             _logSHcmdEventIfCompleted();
-
-// where to put this, not ONLY in  _doServerNodeIDmsgSM                       _mySHzigbee.newSHmsgRX = NO;
         }
 
         // check if a new Zigbee frame/SmartHome message has been received and process it
         // check if a new Zigbee frame/SmartHome message is ready to send out
         // Check in on SmartHome Zigbee messaging state machine for anything to do (ready to transmit or already received)
-        if( (YES == Frame->shCurrentLoadNodeInfo.newSHmsgTX) || (YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX) )
+//        if( (YES == Frame->shCurrentLoadNodeInfo.newSHmsgTX) || (YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX) )
+        if( (YES == Frame->shCurrentLoadNodeInfo.newSHmsgTX) || (YES == _mySHzigbee.newSHmsgRX) )
         {
             _doServerNodeIDmsgSM();
         }
@@ -130,6 +129,25 @@ void wxSmartHomeServerApp::OnIdle(wxIdleEvent &event)
     }
 }
 
+void wxSmartHomeServerApp::_SHnewMsgUpdateLoadNodeInfo(void)
+{
+    if( (YES == _mySHzigbee.newSHmsgRX) && (_mySHzigbee.SHmsgRX.SHsrcID == Frame->shCurrentLoadNodeInfo.SHthisNodeID) )
+    {
+        Frame->shCurrentLoadNodeInfo.SHmsgCmd = _mySHzigbee.SHmsgRX.SHcommand;
+        Frame->shCurrentLoadNodeInfo.SHmsgNextState = _mySHzigbee.SHmsgRX.SHmsgType;
+        Frame->shCurrentLoadNodeInfo.newSHmsgRX = _mySHzigbee.newSHmsgRX;
+
+//        Frame->shCurrentLoadNodeInfo.SHthisNodeLevelFav = _mySHzigbee.SHmsgRX.SHstatusH; //FAV
+//        Frame->shCurrentLoadNodeInfo.SHthisNodeIsPowered = _mySHzigbee.SHmsgRX.SHstatusL; //isPowered
+//        Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = _mySHzigbee.SHmsgRX.SHstatusVal; //CurLevel
+
+        Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = _mySHzigbee.SHmsgRX.SHcommand;
+        Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH   = _mySHzigbee.SHmsgRX.SHstatusH; //FAV
+        Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL   = _mySHzigbee.SHmsgRX.SHstatusL; //isPowered
+        Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = _mySHzigbee.SHmsgRX.SHstatusVal; //CurLevel
+
+    }
+}
 
 // communications state machine, to send/receive Zigbee packets/frames
 void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
@@ -138,6 +156,11 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
     volatile uint8_t   SHmsgCmd;
     volatile uint8_t   SHmsgStatus;
 
+
+    if( (YES == _mySHzigbee.newSHmsgRX) && (_mySHzigbee.SHmsgRX.SHsrcID == Frame->shCurrentLoadNodeInfo.SHthisNodeID) )
+    {
+        _SHnewMsgUpdateLoadNodeInfo();
+    }
 
     // update to previous iteration's next state
     Frame->shCurrentLoadNodeInfo.SHmsgCurrentState = Frame->shCurrentLoadNodeInfo.SHmsgNextState;
@@ -155,7 +178,7 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
             if ( SH_MSG_TYPE_CMD_REQ == Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType )
             {
                 // Prepare and Send the appropriate SmartHome command message via Zigbee
-                _mySHzigbee.prepareTXmsg(
+                 _mySHzigbee.prepareTXmsg(
                     Frame->shCurrentLoadNodeInfo.SHthisNodeID,              // DestID is the load target that this WC node wants to control
                     Frame->shThisNodeID,                              // Src ID is this node
                     SH_MSG_TYPE_CMD_REQ,                       // MsgType
@@ -176,6 +199,8 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
 
         case SH_MSG_ST_ACK_REQ:  // Server RX - Wait for ACK_REQ from the node we are talking to
             Frame->shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CNFRM;
+
+            _mySHzigbee.newSHmsgRX = NO;
             break;
 
         case SH_MSG_ST_CNFRM:  // Server TX - tell other node if we initiated command request CMD_REQ to it or not
@@ -187,6 +212,10 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
             // if a message from the currently selected Load node ID, then udpate level indicator
             if( YES == Frame->shCurrentLoadNodeInfo.newSHmsgRX ) //received an appropriate confirmation message
             {
+
+//                wxLogMessage( "Command Complete from node 0x%.4x, status = 0x%x", shCurrentLoadNodeInfo.SHthisNodeMsg.SHsrcID, shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal ) ;
+//                wxLogMessage( "Command Complete from node 0x%.4x", Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID ) ;
+
                 switch( Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand )
                 {
                     // These commands will redraw the wall control Intensity Level Indicator based on value in statusVal field
@@ -284,9 +313,9 @@ bool wxSmartHomeServerApp::_logSHcmdEventIfCompleted(void)
     }
 
     // append new message to the text log file
-    shLogFileNewLine = _shCurrentFullDate + "  " + _shCurrentTime + "    "
-                     + wxString::Format("Control=%.2x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHsrcID)
-                     + wxString::Format("Load=%.2x    ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHdestID)
+    shLogFileNewLine = _shCurrentFullDate + "   " + _shCurrentTime + "    "
+                     + wxString::Format("Control=%.4x  ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHdestID)
+                     + wxString::Format("Load=%.4x    ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHsrcID)
                      //+ wxString::Format("%.2x ", _mySHzigbee.myZBframeRX.ZBfrmPayload.SHmsgType)
                      + "\n        "
                      + wxSHcommandStrings[_mySHzigbee.myZBframeRX.ZBfrmPayload.SHcommand]

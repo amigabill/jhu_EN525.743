@@ -61,6 +61,7 @@ class wxSmartHomeServerApp : public wxApp
         bool _logSHcmdEventIfCompleted(void);
 
         void _shGUIupdateLoadIntensityLevel(void);
+        void _SHnewMsgUpdateLoadNodeInfo(void);
 
 
         DECLARE_EVENT_TABLE()

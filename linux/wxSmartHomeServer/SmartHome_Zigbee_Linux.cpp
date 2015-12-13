@@ -38,6 +38,7 @@ SHzigbee::SHzigbee(void)
 	ZBnewFrameRXed = NO;
 	newSHmsgRX = NO;
 	ZBinFrameRX = NO;
+	newSHmsgTX = NO;
 
 	SHcmdEventNeedsLogged = NO;
 }
@@ -401,7 +402,7 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
                 }
 //                #ifdef DEBUG_ZB_RECEIVE
 	            // debug put frame buffer content to serial monitor for viewing
-	            //_debugPrintZBframeBufRX();
+//	            _debugPrintZBframeBufRX();
 //                #endif // DEBUG_ZB_RECEIVE
 
 	            // pull data fields out of RX buffer into myZBframeRX and SHmsgRX data structures
@@ -410,7 +411,8 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
     		    // indicate to other code that a new SmartHome message has been received for processing
 		        newSHmsgRX = YES;
 
-                if(1) //(SH_MSG_TYPE_COMPLETED == myZBframeRX.ZBfrmPayload.SHmsgType)
+                if(SH_MSG_TYPE_COMPLETED == myZBframeRX.ZBfrmPayload.SHmsgType)
+                //if(1)
                 {
                     //Server logs ALL completed messages, regardless of control/load IDs involved
                     SHcmdEventNeedsLogged= YES;

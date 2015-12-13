@@ -6,6 +6,7 @@
 
 
 // For DEBUG only, Load and Wall Control IDs (SmartHome IDs)
+// NOT for use after things start working.
 #define SH_LOAD_ID_ROOM0_LOAD0 (uint16_t)0x0709
 #define SH_LOAD_ID_ROOM0_LOAD1 (uint16_t)0x0a0c
 #define SH_WC_ID_ROOM0 (uint16_t)0x0123
@@ -38,9 +39,9 @@ typedef struct
 // SH message protocol stages / states for use in state machine current/next states
 #define SH_MSG_ST_IDLE      (uint8_t)0x00  // waiting to receive a command message
 #define SH_MSG_ST_CMD_INIT  (uint8_t)0x01  // begin an SH protocol message conversation
-#define SH_MSG_ST_ACK_REQ   (uint8_t)0x02  // achnowledge receipt of a CMD_INIT message, request confirmation
+#define SH_MSG_ST_ACK_REQ   (uint8_t)0x02  // acknowledge receipt of a CMD_INIT message, request confirmation
 #define SH_MSG_ST_CNFRM     (uint8_t)0x03  // confirm that this node sent a CMD_INIT message to indicated destination
-#define SH_MSG_ST_COMPLETE  (uint8_t)0x04  // complete the SH protocol conversation, include status value        
+#define SH_MSG_ST_COMPLETE  (uint8_t)0x04  // complete the SH protocol conversation, include status value
 
 // use node-specific versions of these instead, in the nodeInfo msg struct
 //uint8_t currentMsgState = SH_MSG_ST_IDLE;
@@ -235,7 +236,7 @@ typedef struct
 #define ZB_FRM_OFFSET_DELMTR        0   // value at this offset MUST be 0x7e
 #define ZB_FRM_OFFSET_LENH          1
 #define ZB_FRM_OFFSET_LENL          2
-#define ZB_FRM_OFFSET_FTYPE         3   // Zigbee frame type  
+#define ZB_FRM_OFFSET_FTYPE         3   // Zigbee frame type
 
 // TX Request frame offsets
 #define ZB_FRM_OFFSET_FID           4   // Zigbee Frame ID
@@ -277,16 +278,16 @@ typedef struct
 class SHzigbee
 {
     public:
-	volatile uint8_t    ZBinFrameRX;        // is a recognizable Zigbee frame coming in or not yet
-	volatile uint8_t    ZBnewFrameRXed;     // Has a new Zigbee frame been received/completed
-	//volatile uint8_t    ZBfrmLengthRX;
-	volatile uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
+	    volatile uint8_t    ZBinFrameRX;        // is a recognizable Zigbee frame coming in or not yet
+	    volatile uint8_t    ZBnewFrameRXed;     // Has a new Zigbee frame been received/completed
+	    //volatile uint8_t    ZBfrmLengthRX;
+    	volatile uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
         volatile SHpayload  SHmsgRX;            // SmartHome message received
         volatile SHpayload  SHmsgTX;            // SmartHome message to send
 
-	SHzigbee(); //constructor
+    	SHzigbee(); //constructor
 
-	// Transmit a Zigbee TX REQ type API frame, previously prepared with SmartHome payload content
+	    // Transmit a Zigbee TX REQ type API frame, previously prepared with SmartHome payload content
         uint8_t zbXmitAPIframe(void);
 
         // Prepare the TX frame message payload to be sent
@@ -297,17 +298,17 @@ class SHzigbee
                            uint8_t  prepSHstatusH,    // Status/StatusID High byte
                            uint8_t  prepSHstatusL,    // Status/StatusID Low byte
                            uint8_t  prepSHstatusVal   // Status value (8bit)
-                         );                 
+                         );
 
 	// read back the current value of this TX message type (of SmartHome Message types)
         uint8_t getMsgTypeTX(void);
-	
+
 	// Receive (attempt to) a Zigbee RX RCVD type API frame, previously prepared with SmartHome payload content
 	uint8_t zbRcvAPIframe(void);
 
     private:
 	// Prefix ALL private items with "_" (underscore) as coding style to help indicate public vs private
-	
+
         ZBframeTX     _myZBframeTX;                //A Zigbee TX REQ type API frame struct instance to work with
         ////prtZBframeTX  ptrMyZBframeTX = &_myZBframeTX;
         uint8_t _ZBfrmBufferTX[ZB_TX_FRM_BYTES];   // byte array buffer to dump into Serial.write()
@@ -316,18 +317,19 @@ class SHzigbee
         ////prtZBframeRX  ptrMyZBframeRX = &_myZBframeRX;
         uint8_t  _ZBfrmBufferRX[ZB_RX_FRM_BYTES];  // byte array buffer to dump into FROM Serial.read()
         uint16_t _ZBoffsetRXbuff;                  // offset index into the _ZBfrmBufferRX Zigbee Frame buffer
-	uint8_t  _ZBfrmRXchkSumCalc;               // locally calculated checksum of the ZB API frame
+	    uint8_t  _ZBfrmRXchkSumCalc;               // locally calculated checksum of the ZB API frame
         uint8_t  _SHmessageChksumCalc;             // locally calculated checksum of the SmartHome Message payload
 //        uint8_t  _ZBinFrameRX;
 
-	void     _initXmitAPIframe(void);
+
+	    void     _initXmitAPIframe(void);
         uint8_t  _calcChkSum8(uint8_t ui8);
         uint8_t  _calcChkSum16(uint16_t ui16);
         uint8_t  _calcChkSum32(uint32_t ui32);
-	void     _parseZBbufferRX(void);
-	void     _debugPrintZBframeBufRX(void);
-	void     _debugPrintZBframeStructRX(void);
-	void     _debugPrintSHmsgRX(void);
+	    void     _parseZBbufferRX(void);
+	    void     _debugPrintZBframeBufRX(void);
+	    void     _debugPrintZBframeStructRX(void);
+        void     _debugPrintSHmsgRX(void);
 
 }; // end class SHzigbee
 

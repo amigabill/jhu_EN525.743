@@ -18,6 +18,7 @@ class SHzigbee
         ZBframeTX     myZBframeTX;                //A Zigbee TX REQ type API frame struct instance to work with
     	volatile uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
         volatile SHpayload  SHmsgRX;            // SmartHome message received
+    	volatile uint8_t    newSHmsgTX;         // Has a new SmartHome message been received/completed
         volatile SHpayload  SHmsgTX;            // SmartHome message to send
 
         uint8_t  SHcmdEventNeedsLogged; // has a command completed message been received to add to log file YES/NO
