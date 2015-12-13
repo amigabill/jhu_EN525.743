@@ -288,18 +288,11 @@ Serial.println(T1_LOAD_INTENSITY_TIMESTEP, DEC);
 
 
     noInterrupts();
-//    Timer1.initialize(T1_LOAD_INTENSITY_TIMESTEP); // done once to init the timer library, later use setperiod to change
-//    Timer1.initialize(1100); // done once to init the timer library, later use setperiod to change
-    // TimerOne lib uses PWM Phase & Freq Correct mode, with my init/setPeriod value placed into ICR1
     Timer1.initialize(); // done once to init the timer library, later use setperiod to change
     Timer1.attachInterrupt(irqT1triacTriggers); // irqT1triacTriggers to be called at each intensity level timestep AND at end of each triac fire pulse
     Timer1.setPeriod(1200);
     Timer1.start();
     interrupts();
-    // custom timer code for this Arduino application
-//    timerInit(); 
-//    timerStart();
-//    timerStop();
 
 Serial.print("F_CPU=");
 Serial.print(F_CPU, DEC);

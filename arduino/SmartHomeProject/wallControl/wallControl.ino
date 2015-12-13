@@ -67,7 +67,7 @@ SHzigbee mySHzigbee = SHzigbee();
 #include <SmartHome_NodeInfo.h>
 SHnodeInfo thisWCnodeInfo;
 SHnodeInfo curLoadNodeInfo;
-
+uint8_t someLoadCommandCompleted = NO;
 
 // This is calibration data for the raw touch data to the screen coordinates
 #define TS_MINX 150
@@ -206,8 +206,7 @@ void setup() {
         }        
           
     } // else SD.begin
-
-     
+    
     //bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, SH_WALLCONTROL_LCD_BACKDROP_X, SH_WALLCONTROL_LCD_BACKDROP_Y);
 //    bmpDraw(SH_WALLCONTROL_LCD_BACKDROP_FILE, 0, 0, 240, 320);   
     lcdDrawBackDrop();
@@ -477,12 +476,66 @@ void loop() {
     {
         //NO touchscreen input for this iteration of loop()
     }
-    
-    // Check in on SmartHome Zigbee messaging state machine for anything to do goober
-//    else if( (YES == curLoadNodeInfo.newSHmsgTX) || (YES == curLoadNodeInfo.newSHmsgRX) )
-//    {
+
+    // Check if have ANY incomgin command-completed message to possibly update level indicator from
+    if(YES == mySHzigbee.someLoadCommandCompleted)
+    {
+        //deprecated or wrong thing to do? Not log fil elike on Linux server
+        //mySHzigbee.someLoadCommandCompleted = NO;        
+        checkIfUpdateLevelIndicator();
+    }
+
+    if (NO == mySHzigbee.newSHmsgRX)
+    {
+        //check for a new incoming frame data
+        mySHzigbee.zbRcvAPIframe();
+    } //fixme
+    else // have received a Zigbee/SH message to process
+    {
+            if( (mySHzigbee.SHmsgRX.SHdestID == thisWCnodeID) ||
+                (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID)
+              )
+            {
+                captureRXmsg();
+            }
+    }
+            
+    // Check in on SmartHome Zigbee messaging state machine for anything to do
+    if( (YES == curLoadNodeInfo.newSHmsgTX) || 
+        (YES == mySHzigbee.newSHmsgRX)
+//        ( (YES == mySHzigbee.newSHmsgRX) && (mySHzigbee.SHmsgRX.SHdestID == thisWCnodeID) ) ||              //addressed to this WC unit
+//        ( (YES == mySHzigbee.newSHmsgRX) && (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID) )  //from our currently selected load, to ANY node
+      )
+    { //fixme
         doWCnodeIDmsgSM();
-//    }
+    }
+}
+
+
+// capture the received message into this Node ID's structure for processing inparallel to possible messages to another node
+void captureRXmsg(void)
+{
+    curLoadNodeInfo.SHthisNodeMsg.SHothrID      = mySHzigbee.SHmsgRX.SHsrcID; // SHsrcIDrx;
+    curLoadNodeInfo.SHthisNodeMsg.SHmsgType     = mySHzigbee.SHmsgRX.SHmsgType; // SHmsgTypeRX;
+    curLoadNodeInfo.SHthisNodeMsg.SHcommand     = mySHzigbee.SHmsgRX.SHcommand; // SHcommandRX;
+    curLoadNodeInfo.SHthisNodeMsg.SHstatusH     = mySHzigbee.SHmsgRX.SHstatusH; // SHstatusHrx;
+    curLoadNodeInfo.SHthisNodeMsg.SHstatusL     = mySHzigbee.SHmsgRX.SHstatusL; // SHstatusLrx;
+// deprecated    curLoadNodeInfo.SHthisNodeMsg.SHstatusID    = ((mySHzigbee.SHmsgRX.SHstatusH << 8) | mySHzigbee.SHmsgRX.SHstatusL) ; // SHstatusIDrx;
+    curLoadNodeInfo.SHthisNodeMsg.SHstatusVal   = mySHzigbee.SHmsgRX.SHstatusVal; // SHstatusValRX;
+    curLoadNodeInfo.SHthisNodeMsg.SHreserved1   = mySHzigbee.SHmsgRX.SHreserved1; // SHreserved1rx;
+    curLoadNodeInfo.SHthisNodeMsg.SHreserved2   = mySHzigbee.SHmsgRX.SHreserved2; // SHreserved2rx;
+    curLoadNodeInfo.SHthisNodeMsg.SHchksum      = mySHzigbee.SHmsgRX.SHpayldChksum; // SHchksumRX;
+
+    curLoadNodeInfo.newSHmsgRX = mySHzigbee.newSHmsgRX; //YES; ??
+}
+
+
+// deprecated??
+// Check if the level indicator on LCD display needs updated per the received load command-completed message
+// and do the update if needed
+void checkIfUpdateLevelIndicator(void)
+{
+    
 }
 
 
@@ -542,7 +595,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 
                 // Set the xmitReady flag in the nodeinfo structure set above
                 curLoadNodeInfo.newSHmsgTX = YES;
-                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
             }
         }
         else if(y>100 && y<160)  // OFF button
@@ -571,7 +625,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 
                 // Set the xmitReady flag in the nodeinfo structure set above
                 curLoadNodeInfo.newSHmsgTX = YES;
-                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
             }
         }
         if(y>180 && y<220)  // Room -> button (select next Room)
@@ -639,7 +694,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
             curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
             // Set the xmitReady flag in the nodeinfo structure set above
             curLoadNodeInfo.newSHmsgTX = YES;
-            curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 #else            
             if( LOAD_INTENSITY_MAX > (curLoadNodeInfo.SHthisNodeLevelCurrent) )
             {
@@ -663,7 +719,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
                 curLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
                 // Set the xmitReady flag in the nodeinfo structure set above
                 curLoadNodeInfo.newSHmsgTX = YES;
-                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
             }
             else
             {
@@ -708,7 +765,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 
             // Set the xmitReady flag in the nodeinfo structure set above
             curLoadNodeInfo.newSHmsgTX = YES;
-            curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+            curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
         }
         else if(y>125 && y<160)  // Down-Arrow button (decrease load intensity)
@@ -746,7 +804,8 @@ void SHdoTouchButton(uint16_t x, uint16_t y)
 
                 // Set the xmitReady flag in the nodeinfo structure set above
                 curLoadNodeInfo.newSHmsgTX = YES;
-                curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                //curLoadNodeInfo.SHmsgCurrentState = SH_MSG_ST_CMD_INIT;
+                curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
             }
             else
             {
@@ -1165,7 +1224,24 @@ uint32_t read32(File &f) {
 #endif // USE_BMP_DRAW
 
 
+// 
+void SHnewMsgUpdateLoadNodeInfo(void)
+{
+    Serial.print("Entering SHnewMsgUpdateLoadNodeInfo");
+//    Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
+    Serial.println();
+    if( (YES == mySHzigbee.newSHmsgRX) && (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID) )
+    {
+        curLoadNodeInfo.SHmsgCmd       = mySHzigbee.SHmsgRX.SHcommand;
+        curLoadNodeInfo.SHmsgNextState = mySHzigbee.SHmsgRX.SHmsgType;
+        curLoadNodeInfo.newSHmsgRX     = mySHzigbee.newSHmsgRX;
 
+        curLoadNodeInfo.SHthisNodeMsg.SHcommand   = mySHzigbee.SHmsgRX.SHcommand;
+        curLoadNodeInfo.SHthisNodeMsg.SHstatusH   = mySHzigbee.SHmsgRX.SHstatusH;    // FAVorite level
+        curLoadNodeInfo.SHthisNodeMsg.SHstatusL   = mySHzigbee.SHmsgRX.SHstatusL;    // isPowered
+        curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = mySHzigbee.SHmsgRX.SHstatusVal;  // current intensity level
+    }  
+}
 
 
 // Do a SmartHome message conversation over Zigbee, as appropriate for the current message command
@@ -1177,18 +1253,37 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
     volatile uint8_t   SHmsgCmd;
     volatile uint8_t   SHmsgStatus;
 
-    
+
+    // check if RX message is from our selceted load, even if to a different destination ID
+    // to see if we need to update the GUI level indicator
+    if( (YES == mySHzigbee.newSHmsgRX) && (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID) )
+    {
+        SHnewMsgUpdateLoadNodeInfo();
+    }
+
     // update to previous iteration's next state
     curLoadNodeInfo.SHmsgCurrentState = curLoadNodeInfo.SHmsgNextState;
 
-
-    #if 1
-    Serial.print("Entering doWCnodeIDmsgSM - newSHmsgTX = ");
+    #if 1 //goober
+    Serial.print("Entering doWCnodeIDmsgSM - newSHmsgTX=");
     Serial.print(curLoadNodeInfo.newSHmsgTX, HEX);
+    Serial.print(" - mySHzigbee.newSHmsgRX=");
+    Serial.print(mySHzigbee.newSHmsgRX, HEX);
+    Serial.print(" - curLoadNodeInfo.newSHmsgRX=");
+    Serial.print(curLoadNodeInfo.newSHmsgRX, HEX);
     Serial.print(" ; SHmsgCurrentState= ");
     Serial.print(curLoadNodeInfo.SHmsgCurrentState, HEX);
-    Serial.print(" ; SHthisNodeMsg.SHcommand = ");
+    Serial.print(" ; SHthisNodeMsg.SHcommand=");
     Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
+    Serial.println();
+            Serial.print("    mySHzigbee.SHmsgRX.SHdestID=");
+            Serial.print(mySHzigbee.SHmsgRX.SHdestID, HEX);
+            Serial.print(" ?=? thisWCnodeID=");
+            Serial.print(thisWCnodeID, HEX);
+            Serial.print(" ; mySHzigbee.SHmsgRX.SHsrcID=");
+            Serial.print(mySHzigbee.SHmsgRX.SHsrcID, HEX);
+            Serial.print(" ?=? curLoadNodeInfo.SHthisNodeID=");
+            Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
     Serial.println();
     #endif
 
@@ -1199,13 +1294,13 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
 //for Linux server logging - use dir name matching node ID with files inside to give room location etc. info
 
         case SH_MSG_ST_IDLE:  // Doing nothing
-            Serial.println("    In SH_MSG_ST_IDLE, doing nothing");
+//            Serial.println("    In SH_MSG_ST_IDLE, doing nothing");
 
         case SH_MSG_ST_CMD_INIT: // WC TX - send a new SmartHome command message to a load
-            if ( SH_MSG_TYPE_CMD_REQ == curLoadNodeInfo.SHthisNodeMsg.SHmsgType )
+            if ( (SH_MSG_TYPE_CMD_REQ == curLoadNodeInfo.SHthisNodeMsg.SHmsgType) && (YES == curLoadNodeInfo.newSHmsgTX) )
             {
               Serial.print("    Sending a SH_MSG_TYPE_CMD_REQ to load ID ");
-              //Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
+              Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
               Serial.println();
               
                 // Prepare and Send the appropriate SmartHome command message via Zigbee
@@ -1241,6 +1336,10 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
             Serial.print("    Received a SH_MSG_ST_ACK_REQ message for nodeID ");  //thisWCnodeID
             Serial.println();
 
+            // compare message dest ID with this WD node ID
+
+            
+//            if ( (SH_MSG_TYPE_CMD_REQ == curLoadNodeInfo.SHthisNodeMsg.SHmsgType) && (YES == curLoadNodeInfo.newSHmsgRX) )
             // if(thisWCnodeID)
             
 #if 0
@@ -1256,6 +1355,8 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
             }
 #endif
             curLoadNodeInfo.newSHmsgRX = NO;  
+            mySHzigbee.newSHmsgRX = NO;
+            
             curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CNFRM;
             break;
 
@@ -1266,13 +1367,31 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_COMPLETE: // WC RX - wait for Load Driver to tell how command execution went
-//            Serial.print("    Received a SH_MSG_ST_COMPLETE ; SHcommand = ");
+////            Serial.print("    Received a SH_MSG_ST_COMPLETE ; SHcommand = ");
+            Serial.print("    State SH_MSG_ST_COMPLETE - SHcommand=");
+            Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
+            Serial.print(" ; mySHzigbee.SHmsgRX.SHdestID=");
+            Serial.print(mySHzigbee.SHmsgRX.SHdestID, HEX);
+            Serial.print(" ?=? thisWCnodeID=");
+            Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
+            Serial.print(" ; thisWCnodeID=");
+            Serial.print(mySHzigbee.SHmsgRX.SHsrcID, HEX);
+            Serial.print(" ?=? curLoadNodeInfo.SHthisNodeID=");
+            Serial.print(curLoadNodeInfo.SHthisNodeID, HEX);
+            Serial.println();
+
+            // compare message src ID with the currently selected load ID
+            //should only be in here if the load IDs match the currently selected, even if dest is some other node than this one
+//            if(1) //received an appropriate confirmation message
+            if( (mySHzigbee.SHmsgRX.SHdestID == thisWCnodeID) ||              // message addressed to this WD node
+                (mySHzigbee.SHmsgRX.SHsrcID == curLoadNodeInfo.SHthisNodeID)  // message sent fromthe currently selected load
+              )
+            {
+
             Serial.print("    State SH_MSG_ST_COMPLETE - SHcommand=");
             Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHcommand, HEX);
             Serial.println();
 
-            if(1) //received an appropriate confirmation message
-            {
                 switch( curLoadNodeInfo.SHthisNodeMsg.SHcommand )
                 {
                     // These commands will redraw the wall control Intensity Level Indicator based on value in statusVal field
@@ -1292,7 +1411,7 @@ void doWCnodeIDmsgSM(void) //uint8_t nodeInfoIndex)
                     case SH_CMD_LOAD_INC:
                     case SH_CMD_LOAD_DEC:
                 
-#if 1
+#if 0
 //            curLoadNodeInfo.SHthisNodeMsg.SHstatusL = curLoadNodeInfo.SHthisNodeIsPowered;
 //            curLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
 //            curLoadNodeInfo.SHthisNodeMsg.SHstatusVal = curLoadNodeInfo.SHthisNodeLevelCurrent;
@@ -1306,7 +1425,8 @@ Serial.print(" ; SHthisNodeLevelCurrent=");
 Serial.print(curLoadNodeInfo.SHthisNodeLevelCurrent, HEX);
 Serial.println();
 
-                        curLoadNodeInfo.SHthisNodeIsPowered = curLoadNodeInfo.SHthisNodeMsg.SHstatusL;
+                        curLoadNodeInfo.SHthisNodeLevelFav     = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
+                        curLoadNodeInfo.SHthisNodeIsPowered    = curLoadNodeInfo.SHthisNodeMsg.SHstatusL;
                         curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
                         
                         if(YES == curLoadNodeInfo.SHthisNodeMsg.SHstatusL) // SHthisNodeIsPowered
@@ -1322,9 +1442,29 @@ Serial.println();
                         }
                         
 #else
+Serial.print("COMPLETED - SHstatusH=");
+Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHstatusH, HEX);
+Serial.print(" ; SHstatusL=");
+Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHstatusL, HEX);
+Serial.print(" ; SHstatusVal=");
+Serial.print(curLoadNodeInfo.SHthisNodeMsg.SHstatusVal, HEX);
+Serial.print(" ; SHthisNodeIsPowered=");
+Serial.print(curLoadNodeInfo.SHthisNodeIsPowered, HEX);
+Serial.print(" ; SHthisNodeLevelCurrent=");
+Serial.print(curLoadNodeInfo.SHthisNodeLevelCurrent, HEX);
+Serial.print(" ; SHthisNodeLevelFav=");
+Serial.print(curLoadNodeInfo.SHthisNodeLevelFav, HEX);
+Serial.println();
+                        curLoadNodeInfo.SHthisNodeLevelFav     = curLoadNodeInfo.SHthisNodeMsg.SHstatusH;
+                        curLoadNodeInfo.SHthisNodeIsPowered    = curLoadNodeInfo.SHthisNodeMsg.SHstatusL;
+                        curLoadNodeInfo.SHthisNodeLevelCurrent = curLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
+
                         // Update intensity level indicator
                         lcdDrawCurLevel();
 #endif
+
+                        curLoadNodeInfo.newSHmsgRX = NO;  
+                        mySHzigbee.newSHmsgRX = NO;
 
                         break;
 
@@ -1334,6 +1474,7 @@ Serial.println();
                 }
 
                 curLoadNodeInfo.newSHmsgRX = NO;  
+                mySHzigbee.newSHmsgRX = NO;
 
                 // reset back to idle state
                 curLoadNodeInfo.SHmsgNextState = SH_MSG_ST_IDLE;  
@@ -1347,6 +1488,13 @@ Serial.println();
             curLoadNodeInfo.newSHmsgTX = NO; 
             curLoadNodeInfo.newSHmsgRX = NO; 
             break;
+    }
+
+    // we receive messages to/from other nodes so that we can update level indicator when soem other controller changes our selected load
+    // need to clear the flags for those, as they may not be processed above, when the message dest ID doesnt' match this WC node ID
+    if(YES == mySHzigbee.newSHmsgRX) //may need improved check here?
+    {
+        mySHzigbee.newSHmsgRX = NO;  
     }
 }
 

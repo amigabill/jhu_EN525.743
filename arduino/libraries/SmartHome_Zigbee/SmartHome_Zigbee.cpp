@@ -9,7 +9,7 @@
 // Comment out the following defines to save Arduino resources
 // UNcomment them to activate the related debug output
 //#define DEBUG_ZB_XMIT
-//#define DEBUG_ZB_RECEIVE
+#define DEBUG_ZB_RECEIVE
 
 
 // constructor
@@ -23,6 +23,8 @@ SHzigbee::SHzigbee()
 	ZBnewFrameRXed = NO;
 	newSHmsgRX = NO;
 	ZBinFrameRX = NO;
+
+	someLoadCommandCompleted = NO;
 }
 
 
@@ -361,6 +363,13 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 
 		// indicate to other code that a new SmartHome message has been received for processing
 		newSHmsgRX = YES;
+
+		//deprecated?? - started mimicing Linux server code, but I think that's used for event log file, not level indicator
+		if(SH_MSG_TYPE_COMPLETED == _myZBframeRX.ZBfrmPayload.SHmsgType)
+		{
+		    //
+		    someLoadCommandCompleted = YES;
+		}
 	    }
 	    
 	    // indicate not still receiving a ZB frame
@@ -592,12 +601,14 @@ void SHzigbee::_debugPrintZBframeStructRX(void)
     Serial.print(" ");
 
 //    Serial.print("_myZBframeRX.ZBfrmPayload.SHmsgType (hex) = ");
+    Serial.print(" <mtype=");
     Serial.print(_myZBframeRX.ZBfrmPayload.SHmsgType, HEX);
-    Serial.print(" ");
+    Serial.print("> ");
 
 //    Serial.print("_myZBframeRX.ZBfrmPayload.SHcommand (hex) = ");
+    Serial.print(" <cmd=");
     Serial.print(_myZBframeRX.ZBfrmPayload.SHcommand, HEX);
-    Serial.print(" ");
+    Serial.print("> ");
 
 //    Serial.print("_myZBframeRX.ZBfrmPayload.SHstatusH (hex) = ");
     Serial.print(_myZBframeRX.ZBfrmPayload.SHstatusH, HEX);

@@ -284,6 +284,8 @@ class SHzigbee
     	volatile uint8_t    newSHmsgRX;         // Has a new SmartHome message been received/completed
         volatile SHpayload  SHmsgRX;            // SmartHome message received
         volatile SHpayload  SHmsgTX;            // SmartHome message to send
+	volatile uint8_t    someLoadCommandCompleted; //YES indicates that a command-completed message was received from any other node
+	                                              //not necessarily addressed to this wall-control as destination node
 
     	SHzigbee(); //constructor
 
