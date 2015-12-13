@@ -200,14 +200,14 @@ void SHzigbee::_debugPrintZBframeBufTX(void)
     int i=0;
     wxString wxZBbuffTX;
 
-    wxZBbuffTX = "Transmitting Zigbee frame  ";
 
     for(i=0; i<ZB_TX_FRM_BYTES; i++)
     {
         wxZBbuffTX = wxZBbuffTX + wxString::Format("%.2x ", _ZBfrmBufferTX[i]);
     }
 
-     wxLogMessage( wxZBbuffTX ) ;
+//    wxZBbuffTX = "Transmitting Zigbee frame  ";
+//    wxLogMessage( wxZBbuffTX ) ;
 }
 
 

@@ -242,7 +242,7 @@ void wxSmartHomeServerApp::_doServerNodeIDmsgSM(void)
                         Frame->shCurrentLoadNodeInfo.SHthisNodeIsPowered = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL;
                         Frame->shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal;
 
-#if 0
+#if 0  // Arduino code
                         if(SH_POWERED_ON == Frame->shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL)
                         {
                             // lcd draw current intensity level to the status val returned in this message

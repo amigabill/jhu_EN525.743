@@ -338,10 +338,28 @@ void wxSmartHomeServerFrame::OnshBMPbtnIncIntClick(wxCommandEvent& event)
     }
 
     // send new level and powered state to the load via Zigbee
+    // Fill TX frame payload (SH message) with current message values
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID;  //SHothrID is the message sender, which is this server
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_INC;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = shCurrentLoadNodeInfo.SHthisNodeIsPowered;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = shCurrentLoadNodeInfo.SHthisNodeLevelCurrent;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
+    // Set the xmitReady flag in the nodeinfo structure set above
+    shCurrentLoadNodeInfo.newSHmsgTX = YES;
+    shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
 
     // update the local level/intensity guage on LCD
-    SHguageDrawCurrentIntensity();
+//    SHguageDrawCurrentIntensity();
 
 //    wxLogMessage( "Button Up Inc Intensity" ) ;
 }
@@ -350,16 +368,39 @@ void wxSmartHomeServerFrame::OnshBMPbtnFavIntClick(wxCommandEvent& event)
 {
     shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = shCurrentLoadNodeInfo.SHthisNodeLevelFav;
 
-    if(shCurrentLoadNodeInfo.SHthisNodeIsPowered == NO)
+//    if(shCurrentLoadNodeInfo.SHthisNodeIsPowered == NO)
+    if( LOAD_INTENSITY_FULL_OFF < shCurrentLoadNodeInfo.SHthisNodeLevelCurrent )
     {
         shCurrentLoadNodeInfo.SHthisNodeIsPowered = YES;
     }
+    else
+    {
+        shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO;
+    }
 
     // send new level and powered state to the load via Zigbee
+    // Fill TX frame payload (SH message) with current message values
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID;  //SHothrID is the message sender, which is this server
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_GOTOFAV;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = shCurrentLoadNodeInfo.SHthisNodeIsPowered;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = shCurrentLoadNodeInfo.SHthisNodeLevelCurrent;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
+    // Set the xmitReady flag in the nodeinfo structure set above
+    shCurrentLoadNodeInfo.newSHmsgTX = YES;
+    shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
 
     // update the local level/intensity guage on LCD
-    SHguageDrawCurrentIntensity();
+//    SHguageDrawCurrentIntensity();
 
 //    wxLogMessage( "Button FAVorite Intensity = %d", shCurrentLoadNodeInfo.SHthisNodeLevelFav ) ;
 }
@@ -384,9 +425,27 @@ void wxSmartHomeServerFrame::OnshBMPbtnDecIntClick(wxCommandEvent& event)
     }
 
     // send new level and powered state to the load via Zigbee
+    // Fill TX frame payload (SH message) with current message values
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHothrID = shThisNodeID;  //SHothrID is the message sender, which is this server
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHmsgType = SH_MSG_TYPE_CMD_REQ;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcommand = SH_CMD_LOAD_DEC;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusH = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusL = shCurrentLoadNodeInfo.SHthisNodeIsPowered;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusID = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusVal = shCurrentLoadNodeInfo.SHthisNodeLevelCurrent;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved1 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHreserved2 = SH_RESERVED_BYTE;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHchksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHcalcChksum = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusTX = 0;
+    shCurrentLoadNodeInfo.SHthisNodeMsg.SHstatusRX = 0;
+
+    // Set the xmitReady flag in the nodeinfo structure set above
+    shCurrentLoadNodeInfo.newSHmsgTX = YES;
+    shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
     // update the local level/intensity guage on LCD
-    SHguageDrawCurrentIntensity();
+//    SHguageDrawCurrentIntensity();
 
 //    wxLogMessage( "Button Down Dec Intensity" ) ;
 }
@@ -426,7 +485,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnOnClick(wxCommandEvent& event)
         shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
         // update the local level/intensity guage on LCD
-        SHguageDrawCurrentIntensity();
+//        SHguageDrawCurrentIntensity();
     }
 //    wxLogMessage( "Button On" ) ;
 }
@@ -460,7 +519,7 @@ void wxSmartHomeServerFrame::OnshBMPbtnOffClick(wxCommandEvent& event)
         shCurrentLoadNodeInfo.SHmsgNextState = SH_MSG_ST_CMD_INIT;
 
         // update the local level/intensity guage on LCD
-        SHguageDrawCurrentIntensity();
+//        SHguageDrawCurrentIntensity();
 
 //        wxLogMessage( "Button Off" ) ;
     }
@@ -638,8 +697,10 @@ void wxSmartHomeServerFrame::SHinitLoadNodeInfo(void)
 
     // ask via Zigbee what these values are
     shCurrentLoadNodeInfo.SHthisNodeIsPowered = NO;
-    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 4; //0;
+//    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 4; //0;
+    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 0; //0;
     shCurrentLoadNodeInfo.SHthisNodeLevelFav = 2;
+//    shCurrentLoadNodeInfo.SHthisNodeLevelCurrent = 4; //0;
 
 //    wxLogMessage( "Default Load ID = 0x%.4x", shCurrentLoadNodeInfo.SHthisNodeID ) ;
 
