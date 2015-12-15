@@ -3,20 +3,38 @@
 
 /***************************************************************
  * Name:      shLinuxSerialPort.h
- * Purpose:   Defines Application Frame
- *            This file provides a simpler serial port API for Linux, making use of Boost::asio calls
- *            This will encapsulate many details of configuring serial port for the SmartHome Xbee/Zigbee module
- *            running at 9600 8N1
- *            Use async_read into a single-byte buffer to avoid blocking on a serial read which may not happen for a long time.
+ * Purpose:   Defines Serial port access class for project Linux "gateway" node
+ *            I initially planned to use Boost-Asio as a foundation,
+ *            but had problems getting that working. It's now based on file descriptors,
+ *            but I would like to get back to a boost-asio implementation later,
+ *            and get away form dependence on Linux style file descriptor style access.
  *
- *            Based on examples at
- *            http://www.cmrr.umn.edu/~strupp/serial.html#5_1
+ *            Inspired by references and examples at
+ *            http://linux.about.com/od/commands/l/blcmdl1_stty.htm
+ *            http://www.cmrr.umn.edu/~strupp/serial.html
+ *
+ *         // did not end up using Boost-Asio, but keep examples here for future reference
+ *         // ignore boost comments for now
+ *         // This file provides a simpler serial port API for Linux, making
+ *         // of Boost::asio calls.
+ *         // This will encapsulate many details of configuring serial port
+ *         // for the SmartHome Xbee/Zigbee module running at 9600 8N1
+ *         // Use async_read into a single-byte buffer to avoid blocking on
+ *         // a serial read which may not happen for a long time.
+ *         //
+ *         // Based on examples at
+ *         // http://www.cmrr.umn.edu/~strupp/serial.html#5_1
  *
  * Author:    Bill Toner (wtoner1@jhu.edu)
- * Created:   2015-11-25
+ * Created:   2015-11-17
  * Copyright: Bill Toner (2015)
- * License:
- **************************************************************/
+ * License:   This library is free software; you can redistribute it and/or
+ *            modify it under the terms of the GNU Lesser General Public
+ *            License as published by the Free Software Foundation; either
+ *            version 2.1 of the License, or (at your option) any later version.
+ *            http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
+ * **************************************************************/
+
 
 #include <wx/string.h>
 #include <wx/file.h>
