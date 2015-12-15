@@ -4,6 +4,7 @@
 /***************************************************************
  * Name:      SmartHome_Zigbee_Linux.h
  * Purpose:   Defines Zigbee class for project Linux "gateway" node
+ *            to send and receive SmartHome messages over Zigbee network
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)

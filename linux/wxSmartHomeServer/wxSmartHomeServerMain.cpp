@@ -1,6 +1,7 @@
 /***************************************************************
  * Name:      wxSmartHomeServerMain.cpp
- * Purpose:   Code for Application Frame for project Linux "gateway" node
+ * Purpose:   implements Application wxWidgets Frame class functions and
+ *            GUI elements for project Linux "gateway" node
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)

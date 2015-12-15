@@ -1,6 +1,7 @@
 /***************************************************************
  * Name:      wxSmartHomeServerMain.h
- * Purpose:   Defines Application Frame for project Linux "gateway" node
+ * Purpose:   Defines Application wxWidgets Frame class and
+ *            GUI elements for project Linux "gateway" node
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)

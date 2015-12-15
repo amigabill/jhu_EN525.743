@@ -1,6 +1,21 @@
 #ifndef SH_ZIGBEE_H
 #define SH_ZIGBEE_H
 
+/***************************************************************
+ * Name:      SmartHome_Zigbee.h
+ * Purpose:   Defines structures, constants, class variables and functions
+ *            for sending and receiving SmartHome project messages over Zigbee network.
+ * Author:    Bill Toner (wtoner1@jhu.edu)
+ * Created:   2015-10-26
+ * Copyright: Bill Toner (2015)
+ * License:   This library is free software; you can redistribute it and/or
+ *            modify it under the terms of the GNU Lesser General Public
+ *            License as published by the Free Software Foundation; either
+ *            version 3.0 of the License, or (at your option) any later version.
+ *            http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
+ **************************************************************/
+
+
 // cross-platform consistent integer types
 #include "stdint.h"
 

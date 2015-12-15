@@ -5,6 +5,7 @@
  * Name:      SmartHome_Zigbee_defs.h
  * Purpose:   Defines Zigbee structs and constant values for
  *            project Arduino nodes and Linux "gateway" node
+ *            for sending and receiving SmartHome messages over Zigbee network
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)

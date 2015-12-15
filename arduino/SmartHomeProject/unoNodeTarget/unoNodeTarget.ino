@@ -1,7 +1,7 @@
 
-/*
- *  NAME: unoNodeTarget
- *  DESCRIPTION: Arduino code for an Uno R3 type Arduino board, in the SmartHome lighting and ceiling fan control system for
+/***************************************************************
+ *  Name: unoNodeTarget
+ *  Purpose:     Arduino code for an Uno R3 type Arduino board, in the SmartHome lighting and ceiling fan control system for
  *               Bill Toner's Fall 2015 Embedded Systems project EN.525.743 at Johns Hopkins University, Dorsey Center
  *               with Professor Houser.
  *
@@ -20,11 +20,12 @@
  *               120V AC power lines to the loads.
  *
  *               When a SmartHome command message is received, and is found to be addressed to a target load controlled
- *               by this Arduino unit, then this node will aknlowledge receipt of the command and ask for confirmation
- *               that the addressed sender did indeed send it. The addressed sender will then condirm or deny that it
+ *               by this Arduino unit, then this node will acknowledge receipt of the command and ask for confirmation
+ *               that the addressed sender did indeed send it. The addressed sender will then confirm or deny that it
  *               made the command request. Finally, this target load node will indicate completion of the command,
  *               along with a status to say it was done or was ignored. The command would be ignored if the
- *               addressed sender denied that it sent the command.
+ *               addressed sender denied that it sent the command. For now, the initial command init and the
+ *               command complete messages are implemented, the intermediate acknowledge and confirm messages are not yet.
  *
  *               On completion of a command, an Event Notice message, including the completion status value,
  *               will be sent to the central Server node for logging. The Event Notice is essentially a command
@@ -33,34 +34,32 @@
  *               The Zigbee message payload contains the SmartHome message, which is of a rigidly defined structure,
  *               and is made up of 12 bytes.
  *
- *               Byte 1 | Offset 0  | Description ...
- *               Byte 2 | Offset 1  |
- *               TODO - complete message description
  *
- *               TODO - complete commands descriptions
+ *               NOTES: This unit's Xbee Zigbee module MUST and SHALL BE preconfigured as a Router in API mode and 9600 8n1
+ *                      One XBee Zigbee module, attached to the SmartHome Linux Server unit, MUST and SHALL be preconfigured
+ *                      as a Coordinator Router in API mode and 9600 8n1
  *
- *               TODO -
+ *               This program was originally intended to use PWM outputs to control triac, and this support up to 6 or so loads per Arduino Uno driver board.
+ *               This proved problematic, and now the Triac control pulse is done in software and periodic timer interrupts and software controlled
+ *               bit-banging output pins, and this can allow a larger number of loads in Uno than OWM would have allowed.
+ *               But for now, we remain using only one or two loads for testing/debug for this semester.
  *
- *               NOTES: I had intended to share this code more with Arduino Due nodes, which I plan to use
- *               as the wall control nodes, placed where you would typically find traditional light switches,
- *               and perhaps replacing traditional light switches. I am finding that this is difficult,
- *               due to endian differences, and also due to differences in data packing and word alignments,
- *               particularly in my initial implementation of Zigbee transmit and receive functions.
- *
- *               This unit's Xbee Zigbee module MUST and SHALL BE preconfigured as a Router in API mode and 9600 8n1
- *               One XBee Zigbee module, attached to the SmartHome Linux Server unit, MUST and SHALL be preconfigured as a Coordinator Router in API mode and 9600 8n1
- *               
- *               This program was originally intended to use PWM outputs tocontrol triac, and this support up to 6 or so loads per Arduino Uno driver board.
- *               This proved problematic, and now the Triac control pulse is done in software, perhaps later as a different timer method than PWM, but
- *               pure software controlled bit-banging output pins, and this can allow a larger number of loads in Uno than OWM would have allowed.
- *               But for now, we remain using only one or two loads for testing/debug, and a large number may not be practical to make use of in real world
- *               
  *               This program makes use of the TimerOne library, which is made available under the
  *               Creative Commons Attribution 3.0 United States License  "CC BY 3.0 US"
  *               https://github.com/PaulStoffregen/TimerOne
  *               http://creativecommons.org/licenses/by/3.0/us/
  *
- */
+ * Author:    Bill Toner (wtoner1@jhu.edu)
+ * Created:   2015-10-02
+ * Copyright: Bill Toner (2015)
+ * License:   This program is free software; you can redistribute it and/or
+ *            modify it under the terms of the GNU Lesser General Public
+ *            License as published by the Free Software Foundation; either
+ *            version 3.0 of the License, or (at your option) any later version.
+ *            http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
+ *
+ **************************************************************/
+
 
 // uncomment these DEBUG items to enable debug serial prints
 //#define DEBUG_ZB_RX
@@ -68,10 +67,10 @@
 
 
 // Select the Microcontroller type for this node unit
-#define uC_TYPE_UNO   1  // 8bit AVR used for load Targets
-#define uC_TYPE_MEGA  2  // 8bit AVR with larger memory and more board pins than Uno
-#define uC_TYPE_DUE   3  // 32bit ARM CortexM3 used for Wall "switch" controllers
-#define uC_TYPE_X64   4  // 64bit x86/x64 PC Linux Server
+#define uC_TYPE_UNO   1  // 8bit AVR LE used for load Targets
+#define uC_TYPE_MEGA  2  // 8bit AVR LE with larger memory and more board pins than Uno
+#define uC_TYPE_DUE   3  // 32bit ARM LE CortexM3 used for Wall "switch" controllers
+#define uC_TYPE_X64   4  // 64bit x86/x64 LE PC Linux Gateway
 
 #define uCtype      uC_TYPE_UNO
 //#define uCtype      uC_TYPE_MEGA
@@ -173,7 +172,7 @@ volatile uint8_t currentNodeInfoIndex= DEFAULT_LOAD_NUM;  //
 #define LOAD_INTENSITY_HIGH      LOAD_INTENSITY_MAX   // this level value is full-on
 
 
-// defines for Arduino digital pins from only the tumber to D and the number, such as 6->D6
+// defines for Arduino digital pins from only the number to D and the number, such as 6->D6
 #define D6 6
 #define D9 9
 
@@ -274,9 +273,9 @@ void setup()
 
     Serial.println("Testing, 1, 2, 3, testing");
 
-    //init the nodeInfo structure data 
+    //init the nodeInfo structure data
     initNodeInfoUno();
-    
+
 Serial.print("PERIOD_uS_60HZ = ");
 Serial.println(PERIOD_uS_60HZ, DEC);
 
@@ -657,19 +656,19 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_CNFRM:  // RX
-#if 0        
-            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CONFIRM == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) ) // && 
+#if 0
+            if ( (YES == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX) && (SH_MSG_TYPE_CONFIRM == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType) ) // &&
             {
                 mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
             }
-#else        
+#else
             // quick hack for development/debug while we get this protocol working
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHmsgNextState = SH_MSG_ST_COMPLETE;
 #endif
             break;
 
         case SH_MSG_ST_COMPLETE: // TX
-#if 0 //to be enabled when other levels of protocol are implemented       
+#if 0 //to be enabled when other levels of protocol are implemented
             if(SH_STATUS_CONFIRMED == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal)
             {
                 // run the received SH command
@@ -682,7 +681,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 #else
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = SHrunCommand(nodeInfoIndex);
 #endif
-            
+
             mySHzigbee.prepareTXmsg(
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHothrID,   // DestID is node that initiated this conversation
                           mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID,             // Src ID is this node
@@ -696,7 +695,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
 //            mySHzigbee.newSHmsgTX = YES;
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = YES;
             mySHzigbee.zbXmitAPIframe();      // Transmit the SmartHome message over Zigbee
-            
+
             Serial.print("nodeID=");
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeID, HEX);
             Serial.print(" sending COMPLETED to ");
@@ -821,7 +820,7 @@ uint8_t SHrunCommand(uint8_t nodeInfoIndex)
         case SH_CMD_LOAD_SAVEFAV:   // store new value as Favorite Intensity Level - NOT YET IMPLEMENTED
             cmdStatus = saveCurrentAsNewFavLevel(nodeInfoIndex);
             break;
-            
+
 // deprecated        case SH_CMD_LOAD_EVNT_NOTICE:  // NEEDED? SERVER will log ALL messages, so may nto need to specifically send something to it
 
         case SH_CMD_NOP:  // No OPeration, DO NOTHING (same as default)
@@ -1081,7 +1080,7 @@ uint8_t saveCurrentAsNewFavLevel(uint8_t nodeInfoIndex)
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
-    
+
     return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav);
 }
 
@@ -1092,7 +1091,7 @@ uint8_t returnPoweredAndCurrentAndFavLevels(uint8_t nodeInfoIndex)
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
-    
+
     return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
 }
 
@@ -1372,11 +1371,11 @@ void loadZeroCrossing(void)
                 digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);
             }
         }
-        else if( (LOAD_INTENSITY_FULL_OFF >= mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent) || 
+        else if( (LOAD_INTENSITY_FULL_OFF >= mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeLevelCurrent) ||
                  (LOAD_POWERED_OFF == mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodeIsPowered) )
         {
             // if the load is OFF then turn off its AC relay PowerSSR Tail unit
-            digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);        
+            digitalWrite(mySHnodeMasterInfo.nodeInfo[nodeIDnum].SHthisNodePin, LOAD_POWERED_OFF);
         }
     }
 
@@ -1577,7 +1576,7 @@ void loadZeroCrossing(void)
 #endif
 
     digitalWrite(pinZeroCrossIRQ, LOW);   // sets the debug pin "off"
-    
+
 } // loadZeroCrossing()
 
 
@@ -1625,8 +1624,8 @@ void setupPCint(void)
 void irqT1triacTriggers(void)
 {
     noInterrupts();
-    
-    uint8_t nodeIDnum= 0;  
+
+    uint8_t nodeIDnum= 0;
 
     // stop Timer1 so does not accidentally trigger irq while we are in here
     Timer1.stop();
@@ -1649,7 +1648,7 @@ void irqT1triacTriggers(void)
 //    Serial.print("]");
 //    Serial.print(".");
 #endif
-    
+
     switch(shIrqT1thisLevel)
     {
         case LOAD_INTENSITY_FULL_ON: // don't expect to end up in here for FULL-ON loads, but do this as sanity check
@@ -1672,7 +1671,7 @@ void irqT1triacTriggers(void)
             }
 
             shIrqT1thisLevel--;
-            
+
             break;
 
         case LOAD_INTENSITY_MED_HIGH:  // medium-high intensity loads - most intense while not full-ON
@@ -1700,7 +1699,7 @@ void irqT1triacTriggers(void)
                     }
                 }
 
-                shIrqT1thisLevel--;                
+                shIrqT1thisLevel--;
 
                 // leave the trigger pulse on until we get to the FULL-OFF/MIN level check below, and turn them ALL off at that point
                 // while that point SHALL come BEFORE the next Zero-Cross trigger
@@ -1725,7 +1724,7 @@ void irqT1triacTriggers(void)
             shIrqT1thisLevel = LOAD_INTENSITY_MAX; // reset to MAX for next iteration through the set of shIrqT1thisLevel values (next half-period)
 
             // do NOT restart the timer here, wait for Zero-Cross interrupt to start it during next half-cycle
-            
+
             // fallthrough to default
 
         default:
@@ -1740,7 +1739,7 @@ void irqT1triacTriggers(void)
     digitalWrite(pinTimer1irq, LOW);   // sets the pin "off"
 
     interrupts();
-    
+
 } // irqT1triacTriggers()
 
 

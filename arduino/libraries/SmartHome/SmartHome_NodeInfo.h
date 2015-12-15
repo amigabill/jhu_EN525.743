@@ -1,5 +1,22 @@
 #ifndef DEF_SH_NODE_INFO_H
 #define DEF_SH_NODE_INFO_H
+
+/***************************************************************
+ * Name:      SmartHome_NodeInfo.h
+ * Purpose:   Defines structures and constant values used for SmartHome Node information,
+ *            such as Zigbee network node ID, node type (light, fan, server/gateway, etc),
+ *            any currently pending Zigbee network message received or to be sent, etc.
+ * Author:    Bill Toner (wtoner1@jhu.edu)
+ * Created:   2015-11-6
+ * Copyright: Bill Toner (2015)
+ * License:   This library is free software; you can redistribute it and/or
+ *            modify it under the terms of the GNU Lesser General Public
+ *            License as published by the Free Software Foundation; either
+ *            version 3.0 of the License, or (at your option) any later version.
+ *            http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
+ **************************************************************/
+
+
 // SmartHome node Status Values
 #define SH_STATUS_SUCCESS       (uint8_t)0x00 // will likely often use a current intensity level value instead of this
 #define SH_STATUS_CONFIRMED     (uint8_t)0xfd // was 0x02

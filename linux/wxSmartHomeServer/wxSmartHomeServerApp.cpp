@@ -1,6 +1,7 @@
 /***************************************************************
  * Name:      wxSmartHomeServerApp.cpp
- * Purpose:   Code for Application Class for project Linux "gateway"
+ * Purpose:   Implements wxWidgets Application Class functions
+ *            for project Linux "gateway" node
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)

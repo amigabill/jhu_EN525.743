@@ -1,7 +1,20 @@
+/***************************************************************
+ * Name:      SmartHome_Zigbee.h
+ * Purpose:   Defines class member functions for sending and receiving
+ *            SmartHome project messages over Zigbee network.
+ * Author:    Bill Toner (wtoner1@jhu.edu)
+ * Created:   2015-10-26
+ * Copyright: Bill Toner (2015)
+ * License:   This library is free software; you can redistribute it and/or
+ *            modify it under the terms of the GNU Lesser General Public
+ *            License as published by the Free Software Foundation; either
+ *            version 3.0 of the License, or (at your option) any later version.
+ *            http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
+ **************************************************************/
+
+
 // Include Arduino standard libraries
 #include "Arduino.h"
-
-#include "../ByteSwap/ByteSwap.h"
 
 #include "SmartHome_Zigbee.h"
 
@@ -16,9 +29,9 @@
 SHzigbee::SHzigbee()
 {
 	_initXmitAPIframe();
-        //initSHmsgRX();
-	
-        _ZBoffsetRXbuff = ZB_FRM_OFFSET_DELMTR; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer	
+    //initSHmsgRX();
+
+    _ZBoffsetRXbuff = ZB_FRM_OFFSET_DELMTR; //ZB_START_DELIMITER; //Delimiter byte is offset 0 into RX buffer
 
 	ZBnewFrameRXed = NO;
 	newSHmsgRX = NO;
@@ -28,12 +41,11 @@ SHzigbee::SHzigbee()
 }
 
 
-
 // Initialize the TX API frame with values we will use as standard
 void SHzigbee::_initXmitAPIframe(void)
 {
     _myZBframeTX.ZBfrmDelimiter  = ZB_START_DELIMITER; // 0x7e;
-    _myZBframeTX.ZBfrmLength     = ZB_TX_FRM_LEN; 
+    _myZBframeTX.ZBfrmLength     = ZB_TX_FRM_LEN;
     _myZBframeTX.ZBfrmType       = ZB_FRAME_TYPE_TX_REQ;
     _myZBframeTX.ZBfrmID         = (uint8_t)1; // always use Zigbee Frame ID of 1
     _myZBframeTX.ZBdaddr64High   = ZB_64ADDR_BCAST_HIGH;
@@ -64,7 +76,7 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
     // initialize the Zigbee TX API frame checksum before calculating it
     _myZBframeTX.ZBfrmChksum = 0;
 
-    // Get data our of our Zigbee frame struct and into a buffer array of bytes/uint8_t 
+    // Get data our of our Zigbee frame struct and into a buffer array of bytes/uint8_t
     // for Serial.write() call to Zbee module
 #if 0
     Serial.print("In zbXmitAPIframe ; ZB_TX_FRM_BYTES=");
@@ -82,7 +94,7 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
     _ZBfrmBufferTX[ZB_FRM_OFFSET_LENL]         = ptrZBfrmLength[0]; //(uint8_t)0x1a;
 
     // START calculating ZB frame checksum, also the ZB "Frame Length" begins here
-    
+
     _ZBfrmBufferTX[ZB_FRM_OFFSET_FTYPE]        = _myZBframeTX.ZBfrmType; //(uint8_t)0x10;
     _myZBframeTX.ZBfrmChksum += _calcChkSum8(_myZBframeTX.ZBfrmType);
 
@@ -152,7 +164,7 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
 
     // STOP calculating ZB frame checksum, also ZB "Frame Length" ends here
     _myZBframeTX.ZBfrmChksum= (uint8_t)0xff -  _myZBframeTX.ZBfrmChksum;
-     
+
     // Zigbee Frame Checksum
     _ZBfrmBufferTX[ZB_FRM_OFFSET_TX_CHKSUM] = _myZBframeTX.ZBfrmChksum; //(uint8_t)0xf4; //_myZBframeTX.ZBfrmChksum;
 
@@ -166,7 +178,7 @@ uint8_t SHzigbee::zbXmitAPIframe(void)
         Serial.print(" ");
     }
     Serial.println("");
-#endif    
+#endif
 
 //    Serial.println("");
 
@@ -244,15 +256,15 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
                            )
 {
     uint8_t tmpChkSum = 0;
-    
+
     _myZBframeTX.ZBfrmPayload.SHpayldChksum= 0;
-    
+
     // ints are 16bit Little Endian, longs are 32bit Little Endian
     // Zigbee goes Big Endian
-    _myZBframeTX.ZBfrmPayload.SHdestID    = prepSHdestID; //BYTESWAP16(prepSHdestID);
+    _myZBframeTX.ZBfrmPayload.SHdestID    = prepSHdestID;
     tmpChkSum += _calcChkSum16(_myZBframeTX.ZBfrmPayload.SHdestID);
-    
-    _myZBframeTX.ZBfrmPayload.SHsrcID     = prepSHsrcID; //BYTESWAP16(prepSHsrcID);
+
+    _myZBframeTX.ZBfrmPayload.SHsrcID     = prepSHsrcID;
     tmpChkSum += _calcChkSum16(_myZBframeTX.ZBfrmPayload.SHsrcID);
 
     _myZBframeTX.ZBfrmPayload.SHmsgType   = prepSHmsgType;
@@ -371,7 +383,7 @@ uint8_t SHzigbee::zbRcvAPIframe(void)
 		    someLoadCommandCompleted = YES;
 		}
 	    }
-	    
+
 	    // indicate not still receiving a ZB frame
             ZBinFrameRX = NO;
 	}
@@ -405,11 +417,11 @@ void SHzigbee::_parseZBbufferRX(void)
 
     // start calculating RX frame checksum for comparison
     // checksum is calculated on bytes BETWEEN (not including) the Zigbee frame length and checksum byte offsets
-    
+
     // Zigbee Frame Type
     _myZBframeRX.ZBfrmType = _ZBfrmBufferRX[ZB_FRM_OFFSET_FTYPE];  //ZB frame Type
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_FTYPE];
- 
+
     // Zigbee 64bit BE Source addr
     ptrZBsaddr64H[3] = _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B7];  // ZB frame BE 64bit DADDR Hword MSbyte 7
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B7];
@@ -422,7 +434,7 @@ void SHzigbee::_parseZBbufferRX(void)
 
     ptrZBsaddr64H[0] = _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B4];  // ZB frame BE 64bit DADDR Hword LSbyte 4
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B4];
-    
+
     ptrZBsaddr64L[3] = _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B3];  // ZB frame BE 64bit DADDR Lword MSbyte 3
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B3];
 
@@ -434,7 +446,7 @@ void SHzigbee::_parseZBbufferRX(void)
 
     ptrZBsaddr64L[0] = _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B0];  // ZB frame BE 64bit DADDR Lword LSbyte 0
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_TX_DADDR64B0];
-    
+
     // Zigbee 16bit BE Source addr
     ptrZBsaddr16[1] = _ZBfrmBufferRX[ZB_FRM_OFFSET_RX_SADDR16H];
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_RX_SADDR16H];
@@ -445,9 +457,9 @@ void SHzigbee::_parseZBbufferRX(void)
     // Zigbee Options byte
     _myZBframeRX.ZBfrmOptions = _ZBfrmBufferRX[ZB_FRM_OFFSET_RX_OPTIONS];
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[ZB_FRM_OFFSET_RX_OPTIONS];
-            
+
     //// BEGIN SmartHome message payload bytes
-	
+
     //// ZB Payload - SmartHome 16bit BE Node Destination Address
     ptrZBfrmPldSHdestAddr16[1] = _ZBfrmBufferRX[(ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_ID_DEST_H)];
     _ZBfrmRXchkSumCalc += _ZBfrmBufferRX[(ZB_FRM_OFFSET_RX_PAYLOAD + SH_MSG_OFFSET_ID_DEST_H)];
@@ -526,9 +538,9 @@ void SHzigbee::_parseZBbufferRX(void)
     SHmsgRX.SHpayldChksum = _myZBframeRX.ZBfrmPayload.SHpayldChksum;
 
     //// END of the SmartHome Message / Zigbee Frame Payload
-	
+
     // END of Zigbee Frame bytes which are included inteh ZB Frame Checksum calculation
-	
+
     // Zigbee Frame checksum
     _myZBframeRX.ZBfrmChksum = _ZBfrmBufferRX[ZB_FRM_OFFSET_RX_CHKSUM];
     _ZBfrmRXchkSumCalc = (uint8_t)0xff - _ZBfrmRXchkSumCalc;
@@ -636,7 +648,7 @@ void SHzigbee::_debugPrintZBframeStructRX(void)
     Serial.print("?=?");
     Serial.print(_SHmessageChksumCalc, HEX);
     Serial.print(" ");
- 
+
 //    Serial.print("_myZBframeRX.ZBfrmChksum (hex) = ");
     Serial.print(_myZBframeRX.ZBfrmChksum, HEX);
 //    Serial.print(" ?=? _ZBfrmRXchkSumCalc =  ");
@@ -693,7 +705,7 @@ void SHzigbee::_debugPrintSHmsgRX(void)
     Serial.print("?=?");
     Serial.print(_SHmessageChksumCalc, HEX);
     Serial.println(" <SHmsgRX>");
- 
+
 #endif // DEBUG_ZB_RECEIVE
 }
 

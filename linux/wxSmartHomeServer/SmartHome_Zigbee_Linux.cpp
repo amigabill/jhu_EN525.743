@@ -1,6 +1,7 @@
 /***************************************************************
  * Name:      SmartHome_Zigbee_Linux.cpp
- * Purpose:   Defines Zigbee class functions Linux "gateway" node
+ * Purpose:   Implements Zigbee class member functions Linux "gateway" node
+ *            to send and receive SmartHome messages over Zigbee network
  * Author:    Bill Toner (wtoner1@jhu.edu)
  * Created:   2015-11-17
  * Copyright: Bill Toner (2015)
@@ -305,10 +306,10 @@ void SHzigbee::prepareTXmsg( uint16_t prepSHdestID,     // Dest ID
 
     // ints are 16bit Little Endian, longs are 32bit Little Endian
     // Zigbee goes Big Endian
-    myZBframeTX.ZBfrmPayload.SHdestID    = prepSHdestID; //BYTESWAP16(prepSHdestID);
+    myZBframeTX.ZBfrmPayload.SHdestID    = prepSHdestID;
     tmpChkSum += _calcChkSum16(myZBframeTX.ZBfrmPayload.SHdestID);
 
-    myZBframeTX.ZBfrmPayload.SHsrcID     = prepSHsrcID; //BYTESWAP16(prepSHsrcID);
+    myZBframeTX.ZBfrmPayload.SHsrcID     = prepSHsrcID;
     tmpChkSum += _calcChkSum16(myZBframeTX.ZBfrmPayload.SHsrcID);
 
     myZBframeTX.ZBfrmPayload.SHmsgType   = prepSHmsgType;
