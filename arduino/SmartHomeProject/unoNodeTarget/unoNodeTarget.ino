@@ -288,18 +288,11 @@ Serial.println(T1_LOAD_INTENSITY_TIMESTEP, DEC);
 
 
     noInterrupts();
-//    Timer1.initialize(T1_LOAD_INTENSITY_TIMESTEP); // done once to init the timer library, later use setperiod to change
-//    Timer1.initialize(1100); // done once to init the timer library, later use setperiod to change
-    // TimerOne lib uses PWM Phase & Freq Correct mode, with my init/setPeriod value placed into ICR1
     Timer1.initialize(); // done once to init the timer library, later use setperiod to change
     Timer1.attachInterrupt(irqT1triacTriggers); // irqT1triacTriggers to be called at each intensity level timestep AND at end of each triac fire pulse
     Timer1.setPeriod(1200);
     Timer1.start();
     interrupts();
-    // custom timer code for this Arduino application
-//    timerInit(); 
-//    timerStart();
-//    timerStop();
 
 Serial.print("F_CPU=");
 Serial.print(F_CPU, DEC);
@@ -676,7 +669,7 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             break;
 
         case SH_MSG_ST_COMPLETE: // TX
-#if 0        
+#if 0 //to be enabled when other levels of protocol are implemented       
             if(SH_STATUS_CONFIRMED == mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal)
             {
                 // run the received SH command
@@ -712,9 +705,13 @@ void doNodeIDmsgSM(uint8_t nodeInfoIndex)
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHmsgType, HEX);
             Serial.print(" ; CMD=");
             Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand, HEX);
+            Serial.print(" ; statusH=");
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH, HEX);
+            Serial.print(" ; statusL=");
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL, HEX);
             Serial.print(" ; status=");
-            Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal, HEX);
-
+            Serial.print(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal, HEX);
+            Serial.println();
 
             mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgTX = NO;  // sent it, so make sure we don't send it again
 
@@ -775,19 +772,17 @@ void captureRXmsg(uint8_t nodeInfoIndex)
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcommand     = mySHzigbee.SHmsgRX.SHcommand; // SHcommandRX;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH     = mySHzigbee.SHmsgRX.SHstatusH; // SHstatusHrx;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL     = mySHzigbee.SHmsgRX.SHstatusL; // SHstatusLrx;
-    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusID    = ((mySHzigbee.SHmsgRX.SHstatusH << 8) | mySHzigbee.SHmsgRX.SHstatusL) ; // SHstatusIDrx;
+// deprecated    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusID    = ((mySHzigbee.SHmsgRX.SHstatusH << 8) | mySHzigbee.SHmsgRX.SHstatusL) ; // SHstatusIDrx;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal   = mySHzigbee.SHmsgRX.SHstatusVal; // SHstatusValRX;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHreserved1   = mySHzigbee.SHmsgRX.SHreserved1; // SHreserved1rx;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHreserved2   = mySHzigbee.SHmsgRX.SHreserved2; // SHreserved2rx;
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHchksum      = mySHzigbee.SHmsgRX.SHpayldChksum; // SHchksumRX;
-//    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHcalcChksum  = mySHzigbee.SHmsgRX.; // doCalcMsgChecksum(ZB_FRAME_TYPE_RX_RCVD);
 
     mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].newSHmsgRX = mySHzigbee.newSHmsgRX; //YES; ??
 }
 
 
 // Determine which command is pending for this load ID and execute it
-//void SHrunCommand(uint8_t nodeInfoIndex)
 uint8_t SHrunCommand(uint8_t nodeInfoIndex)
 {
     uint8_t cmdStatus = SH_STATUS_FAILED; // init to Failed, change it if something goes well
@@ -813,19 +808,33 @@ uint8_t SHrunCommand(uint8_t nodeInfoIndex)
             cmdStatus = loadDecreaseIntensity(nodeInfoIndex);
             break;
 
+        case SH_CMD_LOAD_READFAV:   // send Favorite Intensity Level back to SH message source node - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_READPWR:   // send isPowered state back to SH message source node - NOT YET IMPLEMENTED
+        case SH_CMD_LOAD_READCRNT:  // send Current Intensity Level back to SH message source node - NOT YET IMPLEMENTED
+            cmdStatus = returnPoweredAndCurrentAndFavLevels(nodeInfoIndex);
+            break;
+
         case SH_CMD_LOAD_GOTOFAV:    // change load to Favorite Intensity Level - NOT YET IMPLEMENTED
             cmdStatus = loadGotoFavIntensity(nodeInfoIndex);
             break;
-            
+
         case SH_CMD_LOAD_SAVEFAV:   // store new value as Favorite Intensity Level - NOT YET IMPLEMENTED
-        case SH_CMD_LOAD_READFAV:   // send Favorite Intensity Level back to SH message source node - NOT YET IMPLEMENTED
-        case SH_CMD_LOAD_READCRNT:  // send Current Intensity Level back to SH message source node - NOT YET IMPLEMENTED
-        case SH_CMD_LOAD_EVNT_NOTICE:  // NEEDED? SERVER will log ALL messages, so may nto need to specifically send something to it
+            cmdStatus = saveCurrentAsNewFavLevel(nodeInfoIndex);
+            break;
+            
+// deprecated        case SH_CMD_LOAD_EVNT_NOTICE:  // NEEDED? SERVER will log ALL messages, so may nto need to specifically send something to it
+
         case SH_CMD_NOP:  // No OPeration, DO NOTHING (same as default)
         default:
             // Unknown command, do nothing
             break;
     }
+
+    // update the message fields for transmit
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+
 
     Serial.println("");
     Serial.print("Ran SH cmd code 0x");
@@ -1060,6 +1069,30 @@ uint8_t loadIncreaseIntensity(uint8_t nodeInfoIndex)
     Serial.print(" new intensity = ");
     Serial.println(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent, DEC);
 
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
+}
+
+
+// Save the current intensity level as the new FAVorite level
+uint8_t saveCurrentAsNewFavLevel(uint8_t nodeInfoIndex)
+{
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+    
+    return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav);
+}
+
+
+// return the current level, isPowered state, and FAVorite level values to the inquiring node
+uint8_t returnPoweredAndCurrentAndFavLevels(uint8_t nodeInfoIndex)
+{
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusH   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelFav;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusL   = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeIsPowered;
+    mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeMsg.SHstatusVal = mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent;
+    
     return(mySHnodeMasterInfo.nodeInfo[nodeInfoIndex].SHthisNodeLevelCurrent);
 }
 
